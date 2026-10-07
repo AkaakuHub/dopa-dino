@@ -8,10 +8,32 @@ export const AD_GAMES = [
   {id:'helix',name:'SPIRAL DROP',hint:'左右にドラッグで回転',keys:'← → / A D',accent:'#ff9454'},
   ...GATES_STACK_META,...GOLF_BREAKER_META,...FPS_META,...PIN_MERGE_META
 ];
-// One randomly ordered visit to each game per round, with no repeat at a round boundary.
+export const AD_ROTATION_KEY='dino-overdrive-ad-rotation';
+const AD_POOL=AD_GAMES.map(g=>g.id),AD_POOL_ID=AD_POOL.join(',');
+// Rewarded ads always visit all games, independently of the LAB's unlocks.
+// Save only the remaining bag and last draw, so reloads do not restart a cycle.
 export class AdShuffleBag {
-  constructor(random=Math.random,allowed=()=>AD_GAMES.map(g=>g.id)){this.allowed=allowed;this.random=random;this.bag=[];this.last=null;}
-  next(){const allowed=this.allowed().filter(id=>AD_GAMES.some(g=>g.id===id));if(!allowed.length)allowed.push('snow');this.bag=this.bag.filter(id=>allowed.includes(id));if(!this.bag.length){this.bag=[...allowed];for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}if(this.bag.length>1&&this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}}this.last=this.bag.shift();return this.last;}
+  constructor(random=Math.random,storage){
+    this.random=random;this.bag=[];this.last=null;this.readOnly=false;
+    try{
+      this.storage=storage===undefined?globalThis.localStorage:storage;
+      const saved=JSON.parse(this.storage?.getItem(AD_ROTATION_KEY)||'null');
+      this.readOnly=saved?.version>1;
+      if(saved?.version===1&&saved.pool===AD_POOL_ID&&Array.isArray(saved.bag)&&saved.bag.length<AD_POOL.length&&new Set(saved.bag).size===saved.bag.length&&saved.bag.every(id=>AD_POOL.includes(id))&&AD_POOL.includes(saved.last)&&!saved.bag.includes(saved.last)){
+        this.bag=[...saved.bag];this.last=saved.last;
+      }
+    }catch{}
+  }
+  next(){
+    if(!this.bag.length){
+      this.bag=[...AD_POOL];
+      for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}
+      if(this.bag.length>1&&this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}
+    }
+    this.last=this.bag.shift();
+    if(!this.readOnly)try{this.storage?.setItem(AD_ROTATION_KEY,JSON.stringify({version:1,pool:AD_POOL_ID,bag:this.bag,last:this.last}));}catch{}
+    return this.last;
+  }
 }
 export const ROUND_RULES={
   range:{limit:45,goal:12,label:'ドローン12機を撃破',value:m=>m.hits,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},

@@ -25,10 +25,10 @@ class StubRenderer{constructor(){this.scale=1}resize(){this.resizeCount=(this.re
 const sandbox={document:doc,window:win,AdRenderer:StubRenderer,AD_GAMES,AdSession,AdShuffleBag,requestAnimationFrame:f=>{const id=++nextFrame;frames.set(id,f);return id},cancelAnimationFrame:id=>frames.delete(id),Math};
 vm.createContext(sandbox);vm.runInContext(readFileSync('./dist/ads.js','utf8').replace(/^import .*;$/gm,'').replace('export class PlayableAds','globalThis.PlayableAds=class PlayableAds'),sandbox);
 const game=new RunnerGame();let revivals=0,restarts=0;
-const ads=new sandbox.PlayableAds({onRevive:()=>{revivals++;assert(game.revive())},onRestart:()=>{restarts++;game.start()}});
+const ads=new sandbox.PlayableAds({onRevive:()=>{revivals++;assert(game.revive())},onRestart:()=>{restarts++;game.start()},availableGames:()=>['snow','hole','helix']});
 const tick=ms=>{assert.equal(frames.size,1,'only one ad RAF may be queued');const [id,fn]=frames.entries().next().value;frames.delete(id);now+=ms;fn(now)};
 const assertFrozen=(before)=>assert.deepEqual([game.score,game.distance,game.stageIndex,game.coins,game.elapsed,game.boostEnergy],before);
-game.start();assert(!game.revive());assert(!game.beginAd());let lastKind;
+game.start();assert(!game.revive());assert(!game.beginAd());let lastKind;const firstCycle=[];
 for(let cycle=1;cycle<=12;cycle++){
   game.shield=0;game.fever=0;game.boostTime=0;
   game.obstacles=[{x:108,y:game.ground-52,w:34,h:47}];game.update(.001);
@@ -38,7 +38,7 @@ for(let cycle=1;cycle<=12;cycle++){
   assert(!elements['ad-screen'].hidden);assert(arcade.inert);assert(doc.body.classes.has('ad-open'));
   assert(elements['ad-screen'].classes.has('ad-enter'));
   assert.equal(elements['ad-screen'].classAdds.filter(s=>s==='ad-enter').length,cycle);
-  assert.notEqual(ads.session.kind,lastKind);lastKind=ads.session.kind;
+  assert.notEqual(ads.session.kind,lastKind);lastKind=ads.session.kind;if(cycle<=10)firstCycle.push(lastKind);
   assert.equal(ads.session.elapsed,0);assert(elements['ad-skip'].disabled);assert(!ads.finish());
   tick(16);tick(4990);assert(ads.session.elapsed<5);assert(!ads.finish());
   const elapsed=ads.session.elapsed;
@@ -57,6 +57,7 @@ for(let cycle=1;cycle<=12;cycle++){
   assert(elements['ad-screen'].hidden);assert(!elements['ad-screen'].classes.has('ad-enter'));assert(!arcade.inert);assert(!doc.body.classes.has('ad-open'));
   game.obstacles=[{x:108,y:game.ground-52,w:34,h:47}];game.update(.001);assert.equal(game.state,'running','each revive shield blocks another immediate death');
 }
+assert.equal(new Set(firstCycle).size,10,'first ten rewarded ads include every game even with only three LAB games available');
 game.state='over';assert(game.beginAd());assert(ads.start());elements['ad-restart'].dispatch('click');assert.equal(restarts,1);assert.equal(game.state,'running');assert.equal(game.score,0);assert.equal(game.revivesUsed,0);assert.equal(frames.size,0);assert(!ads.active);
 const css=readFileSync('./dist/style.css','utf8'),html=readFileSync('./dist/index.html','utf8');
 assert.match(css,/\.ad-screen\.ad-enter\{animation:ad-slide-up \.4s cubic-bezier\(\.16,1,\.3,1\) both\}/);

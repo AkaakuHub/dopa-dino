@@ -83,8 +83,8 @@ The UI integration test uses DOM/canvas stubs; it verifies event bindings and HU
 
 - After a collision, choose 広告で復活. Unlimited revivals retain score, coins, combo, distance, stage and boost charge. Obstacles are cleared and a three-second collision shield protects each return.
 - An opaque full-screen creative slides up once per opening over 400 ms. Reduced-motion preferences suppress the entrance animation. The background runner, page scrolling and background controls stay paused.
-- Compact rewarded-ad chrome contains the game title, a small ad label, three live stats, controls and a countdown. Skip unlocks after five active, visible seconds. There is no automatic exit or install prompt. Each objective round has a visible active-play time limit and a success/failure result; replay and next-game controls permit indefinite play. Blur, hidden tabs and input cancellation are handled separately from game progress.
-- A shuffled game bag visits every game once before refilling and prevents adjacent repeats across boundaries.
+- Compact rewarded-ad chrome contains the game title, a small ad label, three live stats, controls and a countdown. Skip unlocks after five active, visible seconds. There is no automatic exit or install prompt. Each objective round has a visible active-play time limit and a success/failure result; same-game replay permits indefinite play; each opening contains exactly one game. Blur, hidden tabs and input cancellation are handled separately from game progress.
+- Rewarded ads use all ten games independently of LAB/tree unlocks. A saved shuffled bag visits every game once before refilling, survives page reloads and prevents adjacent repeats across boundaries. Direct LAB launches and same-game replay never consume an ad draw.
 
 ### Ten original real-time 3D games
 
@@ -115,9 +115,9 @@ References inform visual and interaction choices, not official affiliation. Five
 
 ### Validation
 
-Focused suite: `node test-ui.mjs && node test-ads.mjs && node test-ad-lifecycle.mjs && node test-three-scene.mjs && node test-helix-rules.mjs && node test-gates-stack.mjs && node test-golf-breaker.mjs && node test-endless-city.mjs`.
+Focused suite: `node test-ad-rotation.mjs && node test-ui.mjs && node test-ads.mjs && node test-ad-lifecycle.mjs && node test-three-scene.mjs && node test-helix-rules.mjs && node test-gates-stack.mjs && node test-golf-breaker.mjs && node test-endless-city.mjs`.
 
-Tests cover active-visible skip timing, unlimited play/revival, input interruption and pointer cleanup, seven-game shuffle, mathematical model interactions, streamed-city bounds, actual fracture geometry, projection/raycasting, bounded scene graphs and disposal. DOM and renderer stubs are explicitly not GPU or real-browser evidence. Browser pixel/input QA must be recorded separately against the deployed version.
+Tests cover active-visible skip timing, unlimited play/revival, input interruption and pointer cleanup, persistent ten-game shuffle, mathematical model interactions, streamed-city bounds, actual fracture geometry, projection/raycasting, bounded scene graphs and disposal. DOM and renderer stubs are explicitly not GPU or real-browser evidence. Browser pixel/input QA must be recorded separately against the deployed version.
 
 ### Procedural soundtrack and effects
 
@@ -129,7 +129,7 @@ Audio checks: `node test-audio.mjs && node test-ui.mjs && node test-ad-lifecycle
 
 ### Incremental arcade lab
 
-Each completed objective or failure now freezes into an explicit result. Ten live games have objective progress and active-play countdowns; the skip still unlocks after five active, visible seconds and preserves unlimited revivals. Replay starts a new independent round, while Next draws from the shuffle bag. Skipping or restarting never awards materials. Failure payout is 0–4 based on demonstrated objective progress; idle failure pays zero. First clear pays 8, with consecutive clear chains growing to 16. Settlement runs exactly once per round and saves a bounded 64-receipt history.
+Each completed objective or failure now freezes into an explicit result. Ten live games have objective progress and active-play countdowns; the skip still unlocks after five active, visible seconds and preserves unlimited revivals. Replay starts a new round of the same game. There is no next-game control within an ad. Skipping or restarting never awards materials. Failure payout is 0–4 based on demonstrated objective progress; idle failure pays zero. First clear pays 8, with consecutive clear chains growing to 16. Settlement runs exactly once per round and saves a bounded 64-receipt history.
 
 DINO LAB launches any available game directly and shows its dedicated material, next threshold, permanent skill level and actual effect. The first clear earns the first skill level. Ten bounded skill definitions support up to 10 levels each; all ten playable games appear in the lab. Existing games provide recharge, permanent coin attraction, stronger jumps, longer revive protection, combo retention, dodge-score bonuses and extended boost. Total skill milestones at levels 3, 8, 15, 25 and 40 multiply main-run coin/time/dodge/stage scoring ×2/4/8/16/32. Clear-chain rewards and visible level-up results make progress immediately legible. No offline earnings, external economy or payments.
 
@@ -185,7 +185,7 @@ After AURORA, the player previews the reset and can cancel without changing anyt
 
 Fresh operators require BOTH research and real rebirth counts: exponent no earlier than 3, tower 12, symbolic huge-number research 30, Graham 75, and the beyond-Graham route 150. A deterministic honest all-branches simulation reached exponent at cycle 6, tower 14, hyper 30, Graham 75, beyond 150, and every final-rank node by 400. These are progression design settings, not universal genre norms. A few cycles cannot unlock everything. Rankable branches provide continuing effects without an enormous repetitive node catalog. Later cycles gain baseline production and bounded stage-progress speed without increasing collision speed beyond the existing safe limits.
 
-Before operator research, production uses small additive arithmetic, with effective generator levels bounded; 20,000 action attempts and retained skill levels do not leak exponent/tower growth. Automated production and hold charging also need their corresponding researched nodes. The single authoritative Prestige.features gate controls the shop, symbol ladder, mini-game bag/cards, automation and Runner effects.
+Before operator research, production uses small additive arithmetic, with effective generator levels bounded; 20,000 action attempts and retained skill levels do not leak exponent/tower growth. Automated production and hold charging also need their corresponding researched nodes. The single authoritative Prestige.features gate controls the shop, symbol ladder, LAB cards, automation and Runner effects. Rewarded-ad rotation remains independent and always includes all ten games.
 
 Migration to progression version 5 preserves previous material/economy/hyper saves. Existing players retain previously available games/operators without receiving invented clears, rebirths or free tree points. New saves receive the restricted first cycle. Future unknown save versions remain untouched.
 
