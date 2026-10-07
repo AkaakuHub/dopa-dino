@@ -37,7 +37,7 @@ check(formatAstral('1e68') === '1無量大数', 'correct Japanese magnitude');
 check(formatAstral('1e1000') === '1×10^1000', 'readable exponent');
 check(formatAstral('ee324') === '10^(10^324)', 'readable nested exponent');
 check(formatAstral(Decimal.tetrate(10, 100)).includes('↑↑'), 'tetration notation with payload');
-check(ASTRAL_NOTATION_HELP.includes('グラハム数は未到達'), 'no fake Graham claim');
+check(ASTRAL_NOTATION_HELP.includes('近似通貨') && ASTRAL_NOTATION_HELP.includes('記号式'), 'no fake Graham claim');
 
 // Plain arithmetic is actual arithmetic, including precise modest differences.
 check(addAstral(20, 30).eq(50), 'addition');

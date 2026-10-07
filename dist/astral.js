@@ -51,7 +51,7 @@ export const compareAstral = (a, b) => astral(a).cmp(astral(b));
 const JAPANESE_UNITS = ['', '万', '億', '兆', '京', '垓', '秭', '穣', '溝', '澗', '正', '載', '極', '恒河沙', '阿僧祇', '那由他', '不可思議', '無量大数'];
 const trim = (n, places = 2) => Number(n.toFixed(places)).toString();
 const compact = n => Math.abs(n) < 1e6 ? trim(n) : n.toExponential(2).replace(/\.00e/, 'e').replace('e+', 'e');
-export const ASTRAL_NOTATION_HELP = '万〜無量大数 → 指数 → 指数の塔。10↑↑h; x は x に「10の累乗」を h 回重ねた値。階層浮動小数点による近似値です。グラハム数は未到達の数学的な目標で、獲得値ではありません。';
+export const ASTRAL_NOTATION_HELP = '万〜無量大数 → 指数 → 指数の塔。10↑↑h; x は x に「10の累乗」を h 回重ねた値。階層浮動小数点による近似値です。この近似通貨は階層浮動小数点です。別のHYPER到達値はグラハム数を含む厳密な記号式です。';
 export function formatAstral(value) {
   const d = astral(value);
   if (!d.sign) return '0';
