@@ -79,26 +79,46 @@ No endorsement by Google or Chromium contributors is implied. Gameplay, interfac
 Checks: `node test-engine.mjs && node test-upgrade.mjs && node test-ui.mjs`.
 The UI integration test uses DOM/canvas stubs; it verifies event bindings and HUD updates, not browser rendering or real-device performance.
 
-## Full-screen playable parody ads
+## Full-screen playable games
 
-- After a collision, choose 遊べる広告で復活. Unlimited revivals per run; restarting without an ad is always available.
-- The entire opaque ad slides up from below the viewport over 400 ms on every opening, then covers the full viewport. Reduced-motion preferences show it immediately. Resize and input do not restart the entrance. It locks page scrolling and background inputs, and pauses the runner completely. It does not request browser fullscreen permission.
-- The skip button unlocks after five active, visible seconds. Five seconds never ends the game or revives automatically. All three mini-games continue until the user chooses to skip; winning or losing does not gate revival. Blur and hidden tabs pause their timer and inputs.
-- On skip, score, coins, combo, distance, stage, and boost charge persist. Obstacles are cleared, the dinosaur is grounded, and a three-second shield plus delayed spawns prevents an immediate second death.
-- Ads use a shuffled bag: all three games appear once per round, the first game is randomized, and adjacent repeats are prevented even across round boundaries. FROSTFIRE CAMP gathers and carries wood to warm a snowy settlement; CITY FEAST grows a hole from street props to buildings, regenerating the city after it is eaten.
-- SPIRAL DROP preserves velocity and continuous position through gaps. Three consecutive gaps charge a fireball; the next solid floor, including a red hazard, shatters into moving platform pieces and consumes the charge. Safe bounces reset the streak. An uncharged red hit breaks the ball and automatically restarts the attempt after 650 ms, without closing the ad or resetting its skip timer. Floors are recycled indefinitely.
-- Reference-led visual refinements include a larger dark-navy furnace with curved pipes and braces, corrected peaked cabin roofs, closer snow/city cameras, lavender-gray roads, a thick cyan hole rim and dark-blue well, and a thicker helix shaft with substantial slate platforms and separate dark vertical faces. Geometry and assets remain original.
-- The playable scenes are genuine Three.js r180 WebGL 3D: original mesh geometry, extruded helix platforms, MeshStandard materials, orthographic game cameras, hemisphere/directional lighting, soft PCF shadow maps, and point-lit furnace. Three.js and its MIT license are vendored in dist/vendor with no CDN or third-party runtime request. Static geometry is merged by material. The ad scenes dispose geometries, materials, shadow maps and render lists when dismissed; a single reusable WebGL context avoids repeated context creation. The existing main runner remains Canvas 2D. No screenshots, logos, or game assets from the reference titles are embedded. The visible small label says this is a fictional parody. No real advertising SDK, tracking, payment, install prompt, or third-party requests are used.
-- Supports touch/pointer, keyboard arrows/WASD, Escape after skip unlock, and focus containment. Snow decoration respects the reduced-motion setting.
+- After a collision, choose 広告で復活. Unlimited revivals retain score, coins, combo, distance, stage and boost charge. Obstacles are cleared and a three-second collision shield protects each return.
+- An opaque full-screen creative slides up once per opening over 400 ms. Reduced-motion preferences suppress the entrance animation. The background runner, page scrolling and background controls stay paused.
+- Compact rewarded-ad chrome contains the game title, a small ad label, three live stats, controls and a countdown. Skip unlocks after five active, visible seconds. There is no automatic exit, time limit, install prompt or result-gated reward. Blur, hidden tabs and input cancellation are handled separately from game progress.
+- A shuffled seven-game bag visits every game once before refilling and prevents adjacent repeats across boundaries.
 
-Official game/store screenshots and mechanics reviewed on 2026-10-07:
+### Seven original real-time 3D games
+
+1. FROSTFIRE CAMP: gather six logs at snow-covered trees and deliver them to a glowing furnace. Carrying models, working crew, snow, chimney smoke and fire have bounded effects.
+2. CITY FEAST: grow a moving hole by swallowing street props, cars and buildings. Movement is unconstrained. A deterministic 3×3 neighborhood of 16-unit chunks streams around the player, retaining at most 234 item records. Road tiles and detailed object archetypes are instanced with fixed capacities. Swallowed objects tilt and sink; the camera follows and smoothly widens as the hole grows. Departed chunks are discarded and may regenerate when revisited; there is no persistent visited-map growth.
+3. SPIRAL DROP: rotate thick platform rings in the direction of the drag. Three consecutive gaps charge a fireball; the next solid platform, including a red hazard, shatters without stopping descent. A safe bounce resets the combo and an uncharged red hit restarts the attempt. Nine ring slots and forty shared-geometry fracture pieces are recycled. Input and visible geometry use the same angular convention.
+4. CROWD RUSH: steer a helmeted squad through paired arithmetic gates, avoid barricades, fight opposing crowds and defeat bosses. Crowd growth, shooting, gate labels and formations are rendered in 3D with bounded pools.
+5. SKY STACK: tap to land an alternating-axis sliding slab. Actual overlap trims the tower footprint; overhangs tumble, precise landings build combos and missed placements restart. Tower levels and fragments recycle.
+6. POCKET PUTT: drag backward from the ball and release, or aim with the keyboard, to bank a putt around walls, ramps and sand. Six course layouts cycle and mirror, with strokes/par scoring and a bank-aware aiming guide.
+7. NEON BREAKER: steer a paddle beneath a ricocheting ball to clear layered brick patterns. Armored bricks and wide-paddle, fireball and slow-ball pickups vary the waves; lives and automatic retries retain indefinite play.
+
+All scenes use locally vendored Three.js r180, original procedural geometry, soft PCF shadows and shared material caches. Static decoration is merged by material. New game modules add no dependencies. Dynamic geometry and effects are bounded, and scene geometries, materials, textures, shadow maps and renderer lists are disposed on dismissal. The reusable WebGL context is retained; the main runner remains Canvas 2D. No reference screenshots, third-party game logos, external ad SDKs, tracking, ratings, purchase buttons or installation claims are embedded.
+
+Official reference pages reviewed on 2026-10-07:
 - Whiteout Survival: https://apps.apple.com/us/app/whiteout-survival/id6443575749
-- Hole.io (VOODOO): https://voodoo.io/games/hole-io
-- Helix Jump (VOODOO): https://apps.apple.com/us/app/helix-jump/id1345968745
-- Helix Jump three-gap invincibility rule: https://store.steampowered.com/app/2751330/Helix_Jump/
-- Helix Jump next-floor destruction rule: https://www.crazygames.com/game/helix-jump
-These are game references rather than proof of specific advertising campaigns; no official affiliation is claimed.
+- Hole.io: https://play.google.com/store/apps/details?id=io.voodoo.holeio
+- Helix Jump: https://play.google.com/store/apps/details?id=com.h8games.helixjump
+- Last War: https://play.google.com/store/apps/details?id=com.fun.lastwar.gp
+- Mob Control: https://play.google.com/store/apps/details?id=com.vincentb.MobControl
+- Google rewarded-ad demo: https://codelabs.developers.google.com/codelabs/admob-ads-in-flutter
+- Unity playable creative guide: https://storage.googleapis.com/unity-ads-aui-prod-deployments/external-app/UnityAds_Playable_guide.pdf
 
-Skip semantics reference: https://support.google.com/authorizedbuyers/answer/2691733?hl=en describes unlocking video-ad skip after five seconds without truncating the video. Our five-second playable-ad choice follows the user's requested behavior; it is not a claim that all playable ad networks use five seconds.
+References inform visual and interaction choices, not official affiliation. Five-second skip is the requested app behavior, not a claim that every rewarded-ad network uses the same duration.
 
-Checks: `node test-engine.mjs && node test-upgrade.mjs && node test-ui.mjs && node test-ads.mjs && node test-ad-lifecycle.mjs && node test-three-scene.mjs && node test-helix-rules.mjs`. Tests cover 12 actual collision/ad/skip/revive cycles, entrance class stability, reduced-motion CSS rules, per-session RAF and pointer-capture cleanup, three interactive loops, 10-minute continued play, exact unlock boundary, no automatic exit, early/double-skip rejection, pause/visibility, pointer targeting, resize, revival preservation and safety, reset, and existing runner regressions. DOM event integration tests use stubs. Previous Canvas snapshots no longer validate these replaced scenes. Three.js scene graph construction, geometry counts, camera projection, raycasting and disposal are checked independently. Dedicated tests verify continuous accelerating drops, three-gap activation, single-use red-floor destruction, safe bounce/reset, red death/retry, frame-rate agreement, moving platform fragments and their cleanup, and 90,000 seeded shuffle draws. These tests do not validate GPU-rendered pixels or device performance. Real browser/WebGL QA remains blocked by Chromium socket creation restrictions and unavailable portable preview forwarding; do not claim it passed.
+### Validation
+
+Focused suite: `node test-ui.mjs && node test-ads.mjs && node test-ad-lifecycle.mjs && node test-three-scene.mjs && node test-helix-rules.mjs && node test-gates-stack.mjs && node test-golf-breaker.mjs && node test-endless-city.mjs`.
+
+Tests cover active-visible skip timing, unlimited play/revival, input interruption and pointer cleanup, seven-game shuffle, mathematical model interactions, streamed-city bounds, actual fracture geometry, projection/raycasting, bounded scene graphs and disposal. DOM and renderer stubs are explicitly not GPU or real-browser evidence. Browser pixel/input QA must be recorded separately against the deployed version.
+
+### Procedural soundtrack and effects
+
+Every game has an original Web Audio score: synthwave for DINO, warm bells for FROSTFIRE CAMP, syncopated bass for CITY FEAST, driving arpeggios for SPIRAL DROP, a brass-like march for CROWD RUSH, airy mallets for SKY STACK, soft lounge plucks for POCKET PUTT, and chiptune for NEON BREAKER. Event-specific effects cover gathering, delivery, growth, bouncing, drops, fractures, gates, combat, stacking, putting, bricks and power-ups. No downloaded audio, external requests or new dependencies are used.
+
+The main sound icon, the icon inside each playable game, and M use one saved master toggle (off by default). Audio starts only after a user gesture. A single context and the existing animation loop drive a 140 ms look-ahead scheduler with at most 48 voices. Transitions stop the previous score and effects; pause, blur, hidden tabs and mute silence active voices. Resuming does not replay missed notes or muted gameplay events. No audio intervals or per-game DOM listeners are allocated.
+
+Audio checks: `node test-audio.mjs && node test-ui.mjs && node test-ad-lifecycle.mjs`. The audio API is mocked for lifecycle, score distinction, event coverage, scheduling bounds and cleanup tests; actual speaker output and device latency require real-browser listening.

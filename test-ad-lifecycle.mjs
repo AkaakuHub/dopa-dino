@@ -17,7 +17,7 @@ class Element {
   hasPointerCapture(id){return this.captures.has(id)}
   releasePointerCapture(id){this.captures.delete(id)}
 }
-const elements=Object.fromEntries(['ad-screen','ad-canvas','ad-skip','ad-restart','ad-title','ad-tagline','ad-hint','ad-keys','ad-progress','ad-time-note','ad-game-message',...Array.from({length:3},(_,i)=>'ad-stat-'+i),...Array.from({length:3},(_,i)=>'ad-stat-label-'+i)].map(k=>[k,new Element()]));
+const elements=Object.fromEntries(['ad-screen','ad-canvas','ad-skip','ad-restart','ad-title','ad-hint','ad-keys','ad-progress',...Array.from({length:3},(_,i)=>'ad-stat-'+i),...Array.from({length:3},(_,i)=>'ad-stat-label-'+i)].map(k=>[k,new Element()]));
 const win=new Element(),doc=new Element(),arcade=new Element();
 Object.assign(doc,{body:new Element(),hidden:false,getElementById:k=>elements[k],querySelector:()=>arcade,activeElement:new Element()});
 let nextFrame=0,now=1000;const frames=new Map();
@@ -66,3 +66,6 @@ assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{\.ad-screen\.ad-enter
 assert.match(css,/\.ad-screen\[hidden\]\{display:none!important\}/);
 assert(!html.includes('1 RUN / 1回'));assert(!html.includes('1走につき1回'));
 console.log('PASS: 12 actual collision → ad → five-active-second unlock → unlimited play → revive cycles; same score/stage/resources; no repeat ad, early/double guards, one RAF, blur/visibility timer isolation, input/resize entrance stability, 3-second shield every time, pointer/RAF/modal cleanup, restart reset, 400 ms bottom-up and reduced-motion CSS rules. Controller DOM/CSS checks are not browser visual QA.');
+
+for(const phrase of ['架空広告','無限に遊べます','これは5秒','好きなだけ遊べます','スキップ解放','そのまま遊び続け']){assert(!html.includes(phrase));assert(!readFileSync('./dist/ads.js','utf8').includes(phrase));}
+assert(!html.includes('ad-tagline'));assert(!html.includes('ad-game-message'));assert(!html.includes('ad-time-note'));console.log('PASS: compact ad controls have no explanatory slogans');
