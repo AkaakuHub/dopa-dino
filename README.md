@@ -17,13 +17,13 @@ Static HTML/CSS/ES modules with locally vendored Three.js r180 for the playable 
 
 Serve dist with any static HTTP server. For example: `python3 -m http.server 4173 --directory dist`.
 
-## Deploy with Cloudflare Workers Builds and cf
+## Deploy with pnpm, Vite+, and cf
 
 The complete game is in `dist/`, including its images, Three.js modules, and licenses. Deployment uses the official **cf CLI**, pinned to `1.0.0-beta.12`, the latest npm release verified on 2026-10-07. `cf` is currently in open beta.
 
 `cloudflare.config.ts` defines an assets-only Worker. The Cloudflare Vite plugin 2.0 beta copies `dist/` as Vite's public directory into Cloudflare Build Output. All game assets remain unchanged. There is no Worker entrypoint, server bundle, backend, runtime binding, database, or runtime secret. The project does not install or invoke Wrangler.
 
-The build-only dependencies and their exact versions are recorded in `package.json` and `package-lock.json`. Node.js **22.18 or newer** is required. Cloudflare's default Node.js 24 build image is suitable.
+The build-only dependencies and their exact versions are recorded in `package.json` and `pnpm-lock.yaml`. The project pins **pnpm 10.11.1** (matching Cloudflare's documented default) and **Vite+ 1.0.0**. Vite+ supplies the project-local `vp` CLI; no global Vite+ installation is required. Its matching Vite core alias and Vitest override are kept together in `pnpm-workspace.yaml`. Use Node.js **22.18+ within 22.x, 24.11+ within 24.x, or 26+**. Cloudflare's default Node.js 24 build image is suitable.
 
 ### GitHub integration settings
 
@@ -32,17 +32,19 @@ Connect `AkaakuHub/dopa-dino` through Cloudflare's own GitHub integration: **Wor
 - Worker/project name: `dopa-dino`
 - Production branch: `main`
 - Root directory: repository root (leave blank or `/`, depending on the dashboard field)
-- Build command: `npm run build`
-- Deploy command: `npm run deploy`
+- Build command: `pnpm run build`
+- Deploy command: `pnpm run deploy`
 - Optional build variable: `CF_SEND_TELEMETRY=false`
 
-Cloudflare installs the dependencies from the committed lockfile. The build command runs `cf build`. The deploy command runs `cf deploy --prebuilt --mode production`, deploying the exact output of the preceding build. The production mode must match the Vite build. Replace the dashboard's default deploy command with the command above.
+Cloudflare installs the dependencies from the committed pnpm lockfile. The build command runs `vp build`; the Cloudflare Vite plugin emits `.cloudflare/output/v0/`. The deploy command runs `cf deploy --prebuilt --mode production`, deploying the exact output of the preceding build. The production mode must match the Vite build. Replace the dashboard's default deploy command with the command above.
 
 Pushes to the configured branch trigger Cloudflare Builds. No GitHub Actions workflow is used. The GitHub connection and Cloudflare build credentials belong in the Cloudflare dashboard; never commit tokens or login files. Dashboard authorization and an actual deployment are separate from local build validation.
 
 ### Local validation
 
-Run `npm ci`, then `npm run build`, then `npm run check`. The check invokes `cf deploy --prebuilt --mode production --dry-run`; it validates the assets-only deployment without authentication, API calls, or an upload. Generated `.cloudflare/` output is ignored by Git.
+Run `pnpm install --frozen-lockfile`, then `pnpm run build`, then `pnpm run check`. The check invokes `cf deploy --prebuilt --mode production --dry-run`; it validates the assets-only deployment without authentication, API calls, or an upload. Generated `.cloudflare/` output is ignored by Git.
+
+With a global `vp` CLI, use `vp install --frozen-lockfile`, `vp build`, and `vp run check`. Use `vp run deploy` only when ready to publish. `vp run check` runs this project's deployment dry-run script; the built-in `vp check` is a different lint/format/type-check command.
 
 Do not use `cf init` to regenerate this configured project. Its generic static-site autoconfiguration may choose different build tooling.
 
@@ -54,7 +56,7 @@ Open **dopa-dino → Settings → Domains & Routes → Add → Custom Domain** a
 
 Domains and fetch triggers are intentionally omitted from `cloudflare.config.ts`, with `workersDev` and `previewUrls` disabled. The domain is managed in the dashboard. The first deployment has no public endpoint until that Custom Domain is added. The game has no built-in sign-in gate, so the configured domain is public unless access protection is configured separately.
 
-Official references, checked 2026-10-07: [cf installation](https://developers.cloudflare.com/cf/get-started/), [cf project builds](https://developers.cloudflare.com/cf/projects/), [programmatic configuration](https://developers.cloudflare.com/cf/projects/cloudflare-config/), [cf CI](https://developers.cloudflare.com/cf/ci/), [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), and [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
+Official references, checked 2026-10-07: [cf installation](https://developers.cloudflare.com/cf/get-started/), [cf project builds](https://developers.cloudflare.com/cf/projects/), [programmatic configuration](https://developers.cloudflare.com/cf/projects/cloudflare-config/), [cf CI](https://developers.cloudflare.com/cf/ci/), [Workers Builds settings](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/), [Workers Builds tool versions](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/), [Vite+ project-local CLI](https://viteplus.dev/guide/local-cli), [Vite+ 1.0 release](https://github.com/voidzero-dev/vite-plus/releases/tag/v1.0.0), and [Custom Domains](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
 
 ## Sources and attribution
 
