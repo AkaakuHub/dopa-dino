@@ -51,7 +51,7 @@ export const ROUND_RULES={
   breaker:{limit:150,goal:28,label:'ブロックを全て壊す',value:m=>m.destroyed,win:m=>m.wavePause>0||m.wave>1,fail:m=>m.dead>0}
 };
 export class AdSession {
-  constructor(kind,{round=1,receipt='',missionId=kind}={}){this.kind=kind;this.missionId=missionId;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);this.rule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};}
+  constructor(kind,{round=1,receipt='',missionId=kind}={}){this.kind=kind;this.missionId=missionId;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);const baseRule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};this.rule=(kind==='range'||kind==='breaker')?{...baseRule,goal:kind==='range'?this.model.goal:this.model.waveBricks,label:kind==='range'?`ドローン${this.model.goal}機を撃破`:baseRule.label}:baseRule;}
   get ready(){return this.elapsed>=5&&!this.closed;}
   get remaining(){return Math.max(0,Math.ceil(5-this.elapsed));}
   get progress(){return Math.min(1,Math.max(0,this.rule.value(this.model)/this.rule.goal));}
@@ -60,7 +60,9 @@ export class AdSession {
   update(dt,active=true){if(this.closed||!active)return;dt=Number.isFinite(dt)?Math.max(0,dt):0;this.elapsed+=dt;if(this.result)return;const step=Math.min(dt,.05);this.roundTime+=step;this.model.update(step);this.checkResult();}
   // Closing is a one-shot transition. A second close must not look successful:
   // callers use the return value to guard revive/settlement side effects.
-  close(){if(this.closed||(!this.ready&&!this.result))return false;this.closed=true;return true;}
+  // A player who clears/fails early may return immediately; an idle timeout
+  // still honors the five-second skip gate before it can close.
+  close(){if(this.closed||(!this.ready&&(!this.result||this.roundTime>=this.rule.limit)))return false;this.closed=true;return true;}
 }
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);

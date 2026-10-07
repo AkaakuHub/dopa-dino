@@ -99,7 +99,7 @@ export class NeonBreaker {
   }
   prepareBall(delay=.65){this.balls=[{x:this.paddle.x,z:this.paddle.z-.44,vx:0,vz:0,r:.16}];this.serving=delay;this.trail.length=0;}
   baseSpeed(){return Math.min(15.2,(6.6+(this.wave-1)*.46+this.destroyed*.035)*this.inflation.speed*(this.power.slow>0?.73:1));}
-  launch(){if(this.dead||this.wavePause||this.serving===0||!this.balls.length)return false;this.serving=0;const angle=.22*Math.sin(this.wave*1.7+this.attempt);const speed=this.baseSpeed();for(const ball of this.balls){ball.vx=Math.sin(angle)*speed;ball.vz=-Math.cos(angle)*speed;}this.emit('launch',{x:this.ball.x,z:this.ball.z,balls:this.balls.length});this.message='';return true;}
+  launch(){if(this.dead||this.wavePause||this.serving===0||!this.balls.length)return false;this.serving=0;const angle=.22*Math.sin(this.wave*1.7+this.attempt);const speed=this.baseSpeed();for(const ball of this.balls){ball.vx=Math.sin(angle)*speed;ball.vz=-Math.cos(angle)*speed;}if(this.power.multi>0&&this.balls.length===1)this.spawnMultiball();this.emit('launch',{x:this.ball.x,z:this.ball.z,balls:this.balls.length});this.message='';return true;}
   chooseRisk(multiplier=2){this.riskReward.multiplier=Math.max(2,Math.min(4,Math.floor(Number.isFinite(multiplier)?multiplier:2)));return armRiskReward(this.riskReward,1);}
   armRisk(multiplier=2){return this.chooseRisk(multiplier);}
   action(code){if(code==='Space')return this.launch();if(code==='KeyR'||code==='KeyX')return this.chooseRisk(2);return false;}
@@ -115,7 +115,7 @@ export class NeonBreaker {
     this.power.multi=9;this.emit('multiball',{balls:this.balls.length});this.say('MULTIBALL ×'+this.balls.length,1.2);return true;
   }
   hitBrick(b,ball=this.ball){b.hp--;b.hit=.16;if(b.hp<=0){this.destroyed++;this.combo++;this.updateMultiplier();this.scorePoints(10*this.wave+Math.min(this.combo,12)*2);this.emit('brick',{x:b.x,z:b.z,color:b.color,multiplier:this.scoreMultiplier});if((b.id+this.wave*2+this.inflation.step)%6===0&&this.pickups.length<6){const kinds=['wide','fire','slow','multi'];const kind=kinds[(Math.floor(b.id/6)+this.wave-1+this.inflation.step)%kinds.length];this.pickups.push({x:b.x,z:b.z,kind,phase:b.id*.7});}}else{this.scorePoints(4);this.emit('armor',{x:b.x,z:b.z,color:b.color});}}
-  collect(p){const kind=p.kind==='multiball'?'multi':p.kind;if(!['wide','fire','slow','multi'].includes(kind))return false;if(kind==='multi'){this.spawnMultiball();}else this.power[kind]=kind==='wide'?11:kind==='fire'?8:7;this.scorePoints(25);this.say(kind==='wide'?'WIDE PADDLE':kind==='fire'?'FIREBALL!':kind==='multi'?'MULTIBALL!':'SLOW MOTION',1.5);this.emit('power',{x:p.x,z:p.z,kind:kind});return true;}
+  collect(p){const kind=p.kind==='multiball'?'multi':p.kind;if(!['wide','fire','slow','multi'].includes(kind))return false;if(kind==='multi'){this.power.multi=9;this.spawnMultiball();}else this.power[kind]=kind==='wide'?11:kind==='fire'?8:7;this.scorePoints(25);this.say(kind==='wide'?'WIDE PADDLE':kind==='fire'?'FIREBALL!':kind==='multi'?'MULTIBALL!':'SLOW MOTION',1.5);this.emit('power',{x:p.x,z:p.z,kind:kind});return true;}
   lose(){
     if(this.dead)return;this.lives--;this.combo=0;this.updateMultiplier();this.emit('loss',{x:this.ball?.x??0,z:5.8});
     this.balls.length=0;
