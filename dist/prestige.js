@@ -1,7 +1,7 @@
 // One prestige cycle is the four actual Runner stages, not an economy threshold.
 // This module is pure: the caller owns Runner events, persistence, and confirmation UI.
 export const PRESTIGE_VERSION = 1;
-export const CYCLE_STAGES = Object.freeze(['city', 'desert', 'space', 'aurora']);
+export const CYCLE_STAGES = Object.freeze(['city', 'desert', 'aurora', 'space']);
 export const STAGE_DISTANCE = 600;
 export const CYCLE_DISTANCE = STAGE_DISTANCE * CYCLE_STAGES.length;
 const MAX_REBIRTHS = 1_000_000;

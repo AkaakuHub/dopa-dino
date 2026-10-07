@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {STAGES,RunnerGame} from './dist/engine.js';
+import {CYCLE_STAGES,Prestige} from './dist/prestige.js';
+import {readFileSync} from 'node:fs';
+assert.deepEqual(STAGES.map(s=>s.id),['city','desert','aurora','space']);
+assert.deepEqual(CYCLE_STAGES,['city','desert','aurora','space']);
+assert.equal(STAGES[2].name,'AURORA RUSH');assert.equal(STAGES[3].name,'LUNAR ORBIT');
+const p=new Prestige();const epoch='cycle-test';assert(p.beginRun(epoch));for(let i=1;i<=4;i++)assert(p.observe({stageIndex:i,distance:i*600,epoch}));assert(p.canRebirth);const token=p.token;assert(p.rebirth(token));assert(!p.canRebirth);assert.equal(p.rebirth(token),null);
+const src=readFileSync('./dist/game.js','utf8');assert(src.includes("if(e.index>=4){openPrestige(true);return;}"));assert(src.includes('mandatoryPrestige=mandatoryPrestige||force'));assert(src.includes("if(!treeOpen||mandatoryPrestige)return;"));assert(src.includes("if(mandatoryPrestige)return;"));
+const html=readFileSync('./dist/index.html','utf8');assert(html.includes('02 DESERT'));assert(html.includes('03 AURORA'));assert(html.includes('04 SPACE'));assert(!html.includes('03 SPACE</span><i></i><span data-stage="3">04 AURORA'));
+const palettes=src.match(/pal=\[(.*?)\]\[idx\]/s)?.[1]||'';assert(palettes.includes("'#0c2434','#2b5967'"));assert(palettes.indexOf("'#0c2434")>palettes.indexOf("'#281a30"));
+console.log('PASS: authoritative City → Desert → Aurora → Space order, stage4 terminal callback, mandatory modal guards and persisted one-time rebirth token.');

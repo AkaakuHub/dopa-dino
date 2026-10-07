@@ -56,7 +56,7 @@ export class AdSession {
   get seconds(){return Math.max(0,Math.ceil(this.rule.limit-this.roundTime));}
   checkResult(){if(this.result||this.closed)return this.result;const outcome=this.rule.win(this.model)?'success':this.rule.fail?.(this.model)||this.model.outcome==='failure'||this.roundTime>=this.rule.limit?'failure':null;if(outcome){this.model.keys.clear();this.model.pointerCancel?.();this.result={outcome,progress:this.progress,seconds:this.roundTime,metric:this.model.resultMetric||`${Math.floor(this.rule.value(this.model))} / ${this.rule.goal}`,receipt:this.receipt};}return this.result;}
   update(dt,active=true){if(this.closed||!active)return;dt=Number.isFinite(dt)?Math.max(0,dt):0;this.elapsed+=dt;if(this.result)return;const step=Math.min(dt,.05);this.roundTime+=step;this.model.update(step);this.checkResult();}
-  close(){if(!this.ready)return false;this.closed=true;return true;}
+  close(){if(!this.ready&&!this.result)return false;this.closed=true;return true;}
 }
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);

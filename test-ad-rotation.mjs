@@ -30,7 +30,7 @@ console.log('PASS: 9,000 persisted ad draws across reloads, all ten once per cyc
 
 // Controller integration uses real fresh progression, sessions and runner; rendering is stubbed.
 const html=readFileSync('./dist/index.html','utf8'),controller=readFileSync('./dist/ads.js','utf8');
-assert(!html.includes('ad-next'));assert(!controller.includes('ad-next'));assert(!controller.includes('replay(next'));
+assert(!html.includes('ad-next'));assert(!html.includes('ad-replay'));assert(!controller.includes('ad-next'));assert(!controller.includes('ad-replay'));assert(!controller.includes('replay('));
 class Element {
   constructor(id=''){this.id=id;this.events={};this.dataset={};this.style={};this.hidden=false;this.disabled=false;this.attrs={};this.captures=new Set();this.classes=new Set();this.classList={add:s=>this.classes.add(s),remove:s=>this.classes.delete(s),contains:s=>this.classes.has(s)};}
   addEventListener(t,f){(this.events[t]??=[]).push(f)}
@@ -38,7 +38,7 @@ class Element {
   setAttribute(k,v){this.attrs[k]=v}
   focus(){doc.activeElement=this}
   closest(){return null}
-  querySelectorAll(){return ['ad-sound','ad-skip','ad-restart','ad-replay','ad-return'].map(id=>elements[id]).filter(e=>!e.disabled)}
+  querySelectorAll(){return ['ad-sound','ad-skip','ad-restart','ad-return'].map(id=>elements[id]).filter(e=>!e.disabled)}
   getBoundingClientRect(){return {left:0,top:0,width:1440,height:900}}
   hasPointerCapture(id){return this.captures.has(id)}
   setPointerCapture(id){this.captures.add(id)}
@@ -58,8 +58,8 @@ for(let n=0;n<10;n++){
   assert(!ads.start());assert(!ads.start('snow'));assert(!ads.finish());assert.equal(storage.getItem(AD_ROTATION_KEY),rotation);
   complete[kind](ads.session.model);ads.paint();assert.equal(ads.session.result.outcome,'success');assert(!elements['ad-result'].hidden);const firstReceipt=ads.session.receipt,rounds=progression.state.rounds,resources=JSON.stringify(progression.state.resources);
   ads.paint();ads.showResult();assert.equal(progression.state.rounds,rounds);assert.equal(JSON.stringify(progression.state.resources),resources,'one result is never paid twice');assert.equal(progression.award(kind,firstReceipt,'success',1),null);
-  assert(ads.replay(true),'even an obsolete next argument can only replay the current game');assert.equal(ads.session.kind,kind);assert.equal(ads.session.missionId,missions[draws.indexOf(kind)]);assert.equal(elements['ad-screen'].dataset.kind,kind);assert.equal(storage.getItem(AD_ROTATION_KEY),rotation,'same-game replay cannot consume a future ad');assert.notEqual(ads.session.receipt,firstReceipt);assert(!ads.replay());assert.equal(frames.size,1);
-  ads.session.update(5);ads.paint();assert(ads.finish());assert(!ads.finish());assert.equal(frames.size,0);assert.equal(game.state,'running');assert.equal(progression.state.rounds,rounds);assert.equal(JSON.stringify(progression.state.resources),resources,'skip never settles an incomplete replay');assert.equal(storage.getItem(AD_ROTATION_KEY),rotation);
+  assert.equal(typeof ads.replay,'undefined','completed ads have no replay action');assert.equal(ads.session.kind,kind);assert.equal(ads.session.missionId,missions[draws.indexOf(kind)]);assert.equal(elements['ad-screen'].dataset.kind,kind);assert.equal(storage.getItem(AD_ROTATION_KEY),rotation,'result cannot consume a future ad');assert.equal(progression.state.rounds,rounds,'result settled exactly once');
+  assert(ads.finish());assert(!ads.finish());assert.equal(frames.size,0);assert.equal(game.state,'running');assert.equal(progression.state.rounds,rounds);assert.equal(JSON.stringify(progression.state.resources),resources,'return does not settle twice');assert.equal(storage.getItem(AD_ROTATION_KEY),rotation);
   assert.deepEqual(progression.features.games,['snow','hole','helix']);assert.equal(JSON.stringify(progression.prestige.snapshot()),initialPrestige);
 }
 assert.deepEqual(new Set(draws),new Set(ids));assert.deepEqual(new Set(missions),new Set(ids),'mission rewards also rotate independently across all ten');assert.equal(revives,10);
@@ -69,7 +69,7 @@ const reloaded=new Progression(storage);assert.deepEqual(reloaded.features.games
 const previousDocument=globalThis.document;globalThis.document=doc;try{paintProgression(reloaded);}finally{globalThis.document=previousDocument;}
 for(const id of ids.slice(3))assert.match(elements['skill-grid'].innerHTML,new RegExp('class="skill-card locked" disabled data-play="'+id+'"'),'ad rewards do not unlock LAB cards');
 const runner=new RunnerGame({upgrades:reloaded.levels,meta:reloaded.features});runner.start();runner.blasterCooldown=0;runner.obstacles=[{x:350,y:runner.ground-40,w:30,h:40}];runner.update(.01);assert.equal(runner.obstacles.length,1,'range materials never bypass tree blaster research');assert(!runner.obstacles[0].hit);
-assert(storage.getItem(SAVE_KEY));console.log('PASS: fresh-save rewarded controller covers all ten games; one immutable game per opening; replay/skip do not advance rotation or double-pay; blocked LAB cards, tree/economy/blaster gates survive rewards and reload; single RAF and exact-once return cleanup. DOM/renderer stubs are not browser pixel QA.');
+assert(storage.getItem(SAVE_KEY));console.log('PASS: fresh-save rewarded controller covers all ten games; one immutable game per opening; results/skip do not advance rotation or double-pay; blocked LAB cards, tree/economy/blaster gates survive rewards and reload; single RAF and exact-once return cleanup. DOM/renderer stubs are not browser pixel QA.');
 
 // Input can finish a round before the next animation frame paints its result.
 game.state='over';assert(game.beginAd());assert(ads.start('snow'));ads.session.elapsed=5;complete[ads.session.kind](ads.session.model);ads.session.checkResult();const completedReceipt=ads.session.receipt,roundsBefore=progression.state.rounds,snowBefore=progression.state.resources.snow;assert(!ads.session.settled);assert(ads.finish());assert.equal(progression.state.rounds,roundsBefore+1);assert(progression.state.resources.snow>snowBefore);assert(progression.state.receipts.includes(completedReceipt));assert(!ads.finish());assert.equal(progression.state.rounds,roundsBefore+1);assert.notEqual(storage.getItem(AD_ROTATION_KEY),afterAds);

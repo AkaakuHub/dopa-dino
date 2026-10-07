@@ -2,8 +2,8 @@ import {multiplierFor} from './progression.js';
 export const STAGES = [
   {id:'city',name:'NEON CITY',label:'ネオンシティ',tag:'夜の街をぶっちぎれ',gravity:1750,jump:650,color:'#64e7de'},
   {id:'desert',name:'SUNSET DUNES',label:'サンセット砂漠',tag:'砂煙を置き去りに',gravity:1750,jump:650,color:'#ffbb70'},
-  {id:'space',name:'LUNAR ORBIT',label:'宇宙・月面',tag:'低重力！ふわっと大ジャンプ',gravity:1000,jump:540,color:'#b7a1ff'},
-  {id:'aurora',name:'AURORA RUSH',label:'オーロラ氷原',tag:'極彩色のラストスパート',gravity:1500,jump:615,color:'#82f5cb'}
+  {id:'aurora',name:'AURORA RUSH',label:'オーロラ氷原',tag:'極彩色のラストスパート',gravity:1500,jump:615,color:'#82f5cb'},
+  {id:'space',name:'LUNAR ORBIT',label:'宇宙・月面',tag:'低重力！ふわっと大ジャンプ',gravity:1000,jump:540,color:'#b7a1ff'}
 ];
 export class RunnerGame {
   constructor({width=1000,height=420,random=Math.random,onEvent=()=>{},upgrades={},meta={}}={}){this.upgrades={};this.setUpgrades(upgrades);this.setMeta(meta);this.width=width;this.height=height;this.random=random;this.onEvent=onEvent;this.state='ready';this.reset();}
