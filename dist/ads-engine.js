@@ -1,10 +1,12 @@
+import { GAME_META as FPS_META, GAME_MODELS as FPS_MODELS } from './ads-fps.js';
+import { GAME_META as PIN_MERGE_META, GAME_MODELS as PIN_MERGE_MODELS } from './ads-pin-merge.js';
 import { GAME_META as GATES_STACK_META, GAME_MODELS as GATES_STACK_MODELS } from './ads-gates-stack.js';
 import { GAME_META as GOLF_BREAKER_META, GAME_MODELS as GOLF_BREAKER_MODELS } from './ads-golf-breaker.js';
 export const AD_GAMES = [
   {id:'snow',name:'FROSTFIRE CAMP',hint:'ドラッグで移動',keys:'↑ ↓ ← → / WASD',accent:'#ffb34d'},
   {id:'hole',name:'CITY FEAST',hint:'ドラッグで移動',keys:'↑ ↓ ← → / WASD',accent:'#69dfff'},
   {id:'helix',name:'SPIRAL DROP',hint:'左右にドラッグで回転',keys:'← → / A D',accent:'#ff9454'},
-  ...GATES_STACK_META,...GOLF_BREAKER_META
+  ...GATES_STACK_META,...GOLF_BREAKER_META,...FPS_META,...PIN_MERGE_META
 ];
 // One randomly ordered visit to each game per round, with no repeat at a round boundary.
 export class AdShuffleBag {
@@ -12,6 +14,9 @@ export class AdShuffleBag {
   next(){if(!this.bag.length){this.bag=AD_GAMES.map(g=>g.id);for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}if(this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}}this.last=this.bag.shift();return this.last;}
 }
 export const ROUND_RULES={
+  range:{limit:45,goal:12,label:'ドローン12機を撃破',value:m=>m.hits,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
+  pins:{limit:90,goal:12,label:'12個の宝石を救う',value:m=>m.saved,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
+  merge:{limit:150,goal:1,label:'同じ数字を合体',value:m=>Math.max(0,(2**m.bestTier-2)/(2**m.targetTier-2)),win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
   snow:{limit:75,goal:18,label:'薪を18本届ける',value:m=>m.delivered,win:m=>m.delivered>=18},
   hole:{limit:60,goal:24,label:'街の物を24個吸い込む',value:m=>m.eaten,win:m=>m.eaten>=24},
   helix:{limit:90,goal:18,label:'18段降りる',value:m=>m.depth,win:m=>m.depth>=18,fail:m=>m.dead>0},
@@ -21,7 +26,7 @@ export const ROUND_RULES={
   breaker:{limit:150,goal:28,label:'ブロックを全て壊す',value:m=>m.destroyed,win:m=>m.wavePause>0||m.wave>1,fail:m=>m.dead>0}
 };
 export class AdSession {
-  constructor(kind,{round=1,receipt=''}={}){this.kind=kind;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model({round});this.rule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};}
+  constructor(kind,{round=1,receipt=''}={}){this.kind=kind;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);this.rule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};}
   get ready(){return this.elapsed>=5&&!this.closed;}
   get remaining(){return Math.max(0,Math.ceil(5-this.elapsed));}
   get progress(){return Math.min(1,Math.max(0,this.rule.value(this.model)/this.rule.goal));}

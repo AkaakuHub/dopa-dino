@@ -18,13 +18,21 @@ export const MUSIC = {
   golf: { bpm:78, root:53, bars:[0,2,7,5], lead:'pluck', bass:'sine', steps:16, swing:.22,
     melody:[19,rest,16,rest,rest,14,16,rest,19,rest,24,rest,rest,21,19,rest], bassline:[0,rest,rest,7,rest,rest,0,rest,12,rest,rest,7,rest,rest,0,rest], kick:[0,7,10], snare:[4,12], hats:[2,6,10,14], chord:[0,4,7,11], pad:.45 },
   breaker: { bpm:154, root:40, bars:[0,8,5,7], lead:'square', bass:'square', steps:16, swing:0,
-    melody:[24,19,24,27,rest,24,19,rest,22,17,22,26,rest,22,17,19], bassline:[0,12,rest,7,0,rest,12,rest,0,12,rest,7,0,rest,10,7], kick:[0,6,8,10], snare:[4,12], hats:[0,2,4,6,8,10,12,14], chord:[0,3,7], pad:.24 }
+    melody:[24,19,24,27,rest,24,19,rest,22,17,22,26,rest,22,17,19], bassline:[0,12,rest,7,0,rest,12,rest,0,12,rest,7,0,rest,10,7], kick:[0,6,8,10], snare:[4,12], hats:[0,2,4,6,8,10,12,14], chord:[0,3,7], pad:.24 },
+  range: { bpm:138, root:42, bars:[0,0,3,7], lead:'pluck', bass:'sawtooth', steps:16, swing:0,
+    melody:[19,rest,24,rest,22,19,rest,15,19,rest,27,24,rest,22,19,rest], bassline:[0,rest,0,7,rest,12,0,rest,0,rest,7,0,rest,12,7,rest], kick:[0,3,8,10], snare:[4,12], hats:[2,5,6,10,13,14], chord:[0,3,10], pad:.32 },
+  pins: { bpm:110, root:55, bars:[0,5,7,0], lead:'bell', bass:'triangle', steps:16, swing:.12,
+    melody:[12,19,rest,24,rest,19,16,rest,14,rest,21,19,rest,16,19,rest], bassline:[0,rest,rest,7,rest,0,rest,12,0,rest,rest,7,rest,0,7,rest], kick:[0,7,8], snare:[12], hats:[2,6,10,14], chord:[0,4,9], pad:.7 },
+  merge: { bpm:118, root:48, bars:[0,9,5,7], lead:'pluck', bass:'sine', steps:16, swing:.18,
+    melody:[24,rest,28,31,rest,28,rest,26,24,rest,21,24,rest,19,23,rest], bassline:[0,rest,7,rest,12,rest,7,10,0,rest,12,rest,7,rest,10,12], kick:[0,6,8], snare:[4,12], hats:[2,6,9,14], chord:[0,4,7,14], pad:.55 }
 };
 const supported = {
   dino:['start','jump','coin','boost','stage','fever','smash','over','revive','toggle'],
   snow:['chop','furnace','upgrade'], hole:['swallow','grow'], helix:['bounce','drop','smash','hazard','restart'],
   gates:['gate','battle','shot','impact','victory','fail','restart'], stack:['perfect','cut','miss','restart'],
-  golf:['shot','bank','cup','hole'], breaker:['launch','wall','paddle','brick','armor','power','loss','clear','wave','restart']
+  golf:['shot','bank','cup','hole'], breaker:['launch','wall','paddle','brick','armor','power','loss','clear','wave','restart'],
+  range:['shot','hit','reload','reloaded','warning','block','damage','clear','fail'],
+  pins:['pin','steam','cooled','gem','success','failure'], merge:['drop','merge','success','failure']
 };
 export class ArcadeAudio {
   constructor({ enabled=false, contextFactory=()=>{const C=globalThis.AudioContext||globalThis.webkitAudioContext;return C?new C():null;} }={}) {
@@ -109,7 +117,7 @@ export class ArcadeAudio {
   }
   effect(kind,type,data={}){
     if(!this.audible||!supported[kind]?.includes(type))return false;
-    const now=this.context.currentTime,key=kind+':'+type,cooldown=type==='shot'?.065:type==='wall'?.045:.025;
+    const now=this.context.currentTime,key=kind+':'+type,cooldown=type==='shot'?.065:type==='wall'?.045:type==='steam'?.12:type==='gem'?.06:type==='merge'?.045:.025;
     if(now-(this.lastEffects.get(key)??-10)<cooldown)return false;this.lastEffects.set(key,now);
     const v=(f,to=f,d=.12,g=.22,w='sine',delay=0)=>this.voice({frequency:f,end:to,duration:d,gain:g,type:w,at:now+delay});
     const n=(d=.08,g=.16,cutoff=1000,delay=0)=>this.voice({noise:true,duration:d,gain:g,cutoff,at:now+delay});
@@ -164,6 +172,28 @@ export class ArcadeAudio {
       if(type==='loss')v(420,70,.35,.22,'square');
       if(type==='clear')melody([64,68,71,76,80,83],'square',.25,.15,.08);
       if(type==='wave'||type==='restart')melody([52,59,64],'square',.14,.13);
+    }else if(kind==='range'){
+      if(type==='shot'){v(760,185,.075,.17,'triangle');v(1180,440,.045,.08,'sine');n(.025,.065,3200);}
+      if(type==='hit'){const pitch=76+Math.min(12,data.hits||0);melody([pitch,pitch+7],'bell',.19,.18,.032);v(150,70,.06,.13);}
+      if(type==='reload'){n(.032,.13,1900);v(290,170,.04,.12,'triangle');n(.025,.09,3400,.15);}
+      if(type==='reloaded')melody([66,78],'pluck',.11,.14,.055);
+      if(type==='warning'){v(430,400,.085,.1,'triangle');v(430,400,.085,.1,'triangle',.15);}
+      if(type==='block'){v(910,660,.055,.15);v(1550,1100,.085,.07);}
+      if(type==='damage'){v(180,60,.19,.23,'triangle');n(.095,.14,1200);v(350,190,.12,.09,'sawtooth',.045);}
+      if(type==='clear')melody([66,73,78,82,85,90],'brass',.26,.16,.065);
+      if(type==='fail'){v(260,65,.32,.18,'triangle');melody([66,62,54],'pluck',.21,.11,.1);}
+    }else if(kind==='pins'){
+      if(type==='pin'){v(850,420,.055,.16,'triangle');n(.045,.12,2400);melody([data.pin==='chest'?86:data.pin==='water'?74:79],'bell',.18,.13);}
+      if(type==='steam'){n(.13,.11,3500);v(650,950,.09,.055);}
+      if(type==='cooled'){v(190,80,.14,.18,'triangle');melody([74,81,86],'bell',.3,.17,.07);}
+      if(type==='gem'){v(1100,1600,.07,.16);melody([86,93],'bell',.18,.11,.025);}
+      if(type==='success')melody([74,78,81,86,90,93],'bell',.38,.19,.075);
+      if(type==='failure'){v(320,95,.35,.18,'triangle');melody([74,69,62],'pluck',.24,.11,.1);}
+    }else if(kind==='merge'){
+      if(type==='drop'){v(420,135,.11,.18,'sine');v(820,370,.055,.065,'triangle');}
+      if(type==='merge'){const tier=Math.max(1,Math.min(6,Number.isFinite(data.tier)?data.tier:1)),base=61+tier*4;v(155+tier*38,500+tier*70,.13,.19,'sine');melody([base,base+7,base+12],'bell',.23,.15,.025);}
+      if(type==='success'){v(170,780,.3,.15,'triangle');melody([72,76,79,84,88,91,96],'bell',.32,.17,.055);}
+      if(type==='failure'){v(480,75,.36,.2,'sine');melody([72,67,60],'pluck',.24,.12,.09);}
     }
     return true;
   }

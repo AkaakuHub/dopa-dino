@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { ArcadeAudio, MUSIC } from './dist/audio.js';
 import { SnowCamp, HoleCity, AdSession, AD_GAMES } from './dist/ads-engine.js';
+import { NeonRange } from './dist/ads-fps.js';
 
 // Web Audio contract test, including scheduled node cleanup. It does not test
 // real speakers, browser autoplay policy, perceived loudness, or device latency.
@@ -30,21 +31,31 @@ audio.setGame('dino');audio.tick();assert.equal(created,0,'saved sound-on must n
 audio.setEnabled(false);audio.unlock();assert.equal(created,0,'muted input must not allocate audio');audio.setEnabled(true);const c=contexts[0];assert.equal(created,1);assert(audio.audible);
 audio.tick();assert(audio.voices.size>0);assert(c.history.every(n=>n.at<=.14));
 const fingerprints=new Set();
-for(const kind of ['dino',...AD_GAMES.map(g=>g.id)]){
+for(const kind of Object.keys(MUSIC)){
   const old=[...audio.voices];audio.setGame(kind);if(kind!=='dino')assert(old.every(v=>!audio.voices.has(v)),'previous soundtrack voices stop on transition');
   c.history=[];
   for(let i=0;i<720;i++){audio.tick();assert(audio.voices.size<=48);assert(c.nodes.size<=48*4+4);c.advance(1/60);}
   assert(c.history.length>30,kind+' has a continuous score');
   fingerprints.add(JSON.stringify(c.history.slice(0,30).map(n=>[n.type,Math.round(n.f),Math.round((n.at-c.history[0].at)*100)])));
 }
-assert.equal(fingerprints.size,8,'all eight scores have distinct notes, rhythm, and timbre');
-assert.equal(new Set(Object.values(MUSIC).map(t=>t.bpm)).size,8);
+assert.equal(fingerprints.size,11,'all eleven scores have distinct notes, rhythm, and timbre');
+assert.equal(new Set(Object.values(MUSIC).map(t=>t.bpm)).size,11);
+for(const kind of ['dino',...AD_GAMES.map(g=>g.id)])assert(MUSIC[kind],kind+' has a registered score');
 audio.setGame('helix');audio.tick();audio.setForeground(false);assert.equal(c.state,'suspended');assert.equal(audio.voices.size,0);const before=c.history.length;c.advance(1000);audio.tick();assert.equal(c.history.length,before,'no hidden scheduling');
 audio.setForeground(true);await Promise.resolve();audio.tick();assert(c.history.length-before<12,'no burst of missed background bars');assert.equal(created,1);
 audio.setEnabled(false);assert.equal(audio.voices.size,0);assert.equal(audio.master.gain.value,0);const muted=c.history.length;audio.effect('helix','smash');audio.tick();assert.equal(c.history.length,muted);audio.setEnabled(true);await Promise.resolve();await Promise.resolve();assert.equal(created,1);
-const effects={dino:['start','jump','coin','boost','stage','fever','smash','over','revive'],snow:['chop','furnace','upgrade'],hole:['swallow','grow'],helix:['bounce','drop','smash','hazard','restart'],gates:['gate','battle','shot','impact','victory','fail','restart'],stack:['perfect','cut','miss','restart'],golf:['shot','bank','cup','hole'],breaker:['launch','wall','paddle','brick','armor','power','loss','clear','wave','restart']};
-for(const [kind,events] of Object.entries(effects))for(const type of events){audio.setGame(kind);c.advance(1);const before=c.history.length;assert(audio.effect(kind,type,{combo:3,streak:3,size:1,color:2,kind:'fire',boss:true,strokes:1}));assert(c.history.length>before,kind+':'+type+' emits its own cue');}
-for(let i=0;i<500;i++){audio.effect('dino','boost');c.advance(.026);}assert(audio.voices.size<=48);assert(c.nodes.size<=196);assert(audio.lastEffects.size<70,'event throttles are bounded');
+const effects={dino:['start','jump','coin','boost','stage','fever','smash','over','revive'],snow:['chop','furnace','upgrade'],hole:['swallow','grow'],helix:['bounce','drop','smash','hazard','restart'],gates:['gate','battle','shot','impact','victory','fail','restart'],stack:['perfect','cut','miss','restart'],golf:['shot','bank','cup','hole'],breaker:['launch','wall','paddle','brick','armor','power','loss','clear','wave','restart'],range:['shot','hit','reload','reloaded','warning','block','damage','clear','fail'],pins:['pin','steam','cooled','gem','success','failure'],merge:['drop','merge','success','failure']};
+for(const [kind,events] of Object.entries(effects))for(const type of events){audio.setGame(kind);c.advance(1);const before=c.history.length;assert(audio.effect(kind,type,{combo:3,streak:3,size:1,color:2,kind:'fire',boss:true,strokes:1,hits:4,pin:'water',tier:4}));assert(c.history.length>before,kind+':'+type+' emits its own cue');}
+for(let i=0;i<500;i++){audio.effect('dino','boost');c.advance(.026);}assert(audio.voices.size<=48);assert(c.nodes.size<=196);assert(audio.lastEffects.size<90,'event throttles are bounded');
+// Simultaneous particle rewards cannot flood audio; merging still gets a tiered cue.
+for(const [kind,type,count] of [['pins','steam',28],['pins','gem',12],['merge','merge',16],['range','shot',20]]){
+  audio.setGame(kind);c.advance(1);const eventCount=c.history.length;
+  for(let i=0;i<count;i++)audio.effect(kind,type,{tier:3});
+  assert(c.history.length-eventCount<=8,kind+':'+type+' debounces simultaneous particle events');
+  assert(audio.voices.size<=48);assert(c.nodes.size<=196);
+}
+audio.setGame('merge');c.advance(1);c.history=[];audio.effect('merge','merge',{tier:2});const lowTier=c.history.map(x=>x.f);c.advance(1);c.history=[];audio.effect('merge','merge',{tier:6});assert.notDeepEqual(c.history.map(x=>x.f),lowTier,'higher merge tiers audibly rise');
+audio.setGame('range');c.advance(1);const range=new NeonRange(),target=range.project(range.targets[0]);range.pointerDown(target.x,target.y);const beforeRange=c.history.length;audio.observe('range',range);assert(c.history.length>beforeRange);c.advance(1);const observedRange=c.history.length;audio.observe('range',range);assert.equal(c.history.length,observedRange,'range shot and hit do not replay');
 const seen={events:[{id:1,type:'brick'},{id:2,type:'power'}]};audio.setGame('breaker');c.advance(1);audio.observe('breaker',seen);const once=c.history.length;c.advance(1);audio.observe('breaker',seen);assert.equal(c.history.length,once,'rendering the same retained event never replays it');
 audio.setEnabled(false);seen.events.push({id:3,type:'clear'});audio.observe('breaker',seen);audio.setEnabled(true);c.advance(1);audio.observe('breaker',seen);assert.equal(c.history.length,once,'events during mute do not replay on unmute');
 // Race reconciliation: a queued resume that finishes after muting must suspend.
@@ -55,4 +66,4 @@ const unavailable=new ArcadeAudio({enabled:true,contextFactory:()=>null});unavai
 const snow=new SnowCamp();snow.player={x:snow.nodes[0].x,z:snow.nodes[0].z,target:null};for(let i=0;i<36;i++)snow.update(.05);assert.equal(snow.wood,6);assert.equal(snow.events.filter(e=>e.type==='chop').length,6);snow.player={x:0,z:0,target:null};snow.update(.01);assert(snow.events.some(e=>e.type==='furnace'));assert(snow.events.some(e=>e.type==='upgrade'));
 const hole=new HoleCity();for(let i=0;i<24;i++){hole.items=[{type:'tree',size:.3,fall:.99,eaten:false}];hole.update(.05);}assert.equal(hole.eaten,24);assert(hole.events.some(e=>e.type==='swallow'));assert(hole.events.some(e=>e.type==='grow'));assert(hole.events.length<=20);
 for(const kind of AD_GAMES.map(g=>g.id)){const session=new AdSession(kind);session.update(600);assert(!session.closed,'audio additions do not impose any play limit');}
-console.log('PASS: eight distinct continuous scores; gesture-only context; shared mute; every gameplay cue; 48-voice/node cap; cross-game stop; hidden pause/resume without backlog; async mute/resume race; deduplicated model events; bounded snow/city queues; cleanup and silent unsupported-WebAudio fallback. Web Audio is mocked, not audible browser QA.');
+console.log('PASS: eleven distinct continuous scores; gesture-only context; shared mute; every gameplay cue including range/pins/merge; simultaneous particle cue throttling and tiered merge pitches; 48-voice/node cap; cross-game stop; hidden pause/resume without backlog; async mute/resume race; deduplicated model events; bounded snow/city queues; cleanup and silent unsupported-WebAudio fallback. Web Audio is mocked, not audible browser QA.');
