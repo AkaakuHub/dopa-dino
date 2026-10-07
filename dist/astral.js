@@ -146,7 +146,7 @@ export class AstralEconomy {
     const level = this.state.levels[id];
     const unlocked = id === 'generator' || (id === 'exponent' ? this.state.levels.generator >= 2 : this.state.levels.exponent >= 2);
     const maxed = level >= ASTRAL_MAX_LEVEL;
-    const costFactor = id === 'generator' ? 24 * (1 + level * .06) : id === 'exponent' ? 64 * (1 + level * .1) : 256 * (1 + level * .15);
+    const costFactor = id === 'generator' ? 4 * (1 + level * .06) : id === 'exponent' ? 8 * (1 + level * .1) : 12 * (1 + level * .15);
     const cost = astral(this.power.mul(costFactor));
     const nextPower = maxed ? this.power : this._power({ ...this.state.levels, [id]: level + 1 });
     const readyIn = this.state.cooldown;
@@ -164,7 +164,7 @@ export class AstralEconomy {
     const before = this.currency;
     this._currency = subtractAstral(this._currency, offer.cost);
     this.state.levels[id]++;
-    this.state.cooldown = 2;
+    this.state.cooldown = .18;
     this._cache = null;
     this.revision++;
     return { id, level: this.state.levels[id], cost: offer.cost, before, currency: this.currency, power: this.power };
@@ -182,6 +182,8 @@ export class AstralEconomy {
     this.state.cooldown = Math.max(0, this.state.cooldown - seconds);
     return this._deposit(this.rate.mul(seconds));
   }
+  /** Deliberate gameplay/burst actions add real energy, without idle waiting. */
+  awardAction(strength=1) {if(this.readOnly||!finite(strength)||strength<=0)return ZERO();return this._deposit(this.power.mul(4*Math.min(4,strength)));}
   /** Pure conversion, never deposits into the wallet. */
   awardScore(basePoints) { return multiplyAstral(this.power, finite(basePoints) && basePoints > 0 ? basePoints : 0); }
   /** Call once with the total astronomical run score, not its numeric source. */

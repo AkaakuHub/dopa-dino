@@ -88,17 +88,17 @@ check(economy.buy('missing') === null, 'invalid purchase has no effect');
 check(economy.tick(1000, {active:false}).eq(0), 'hidden/paused frame no payout');
 check(economy.tick(Infinity).eq(0) && economy.tick(NaN).eq(0) && economy.tick(-1).eq(0), 'bad delta rejected');
 check(economy.tick(1000).eq(2), 'long resumed frame clamped to .25s');
-for (let i = 0; i < 11; i++) economy.tick(.25);
-check(economy.currency.eq(24), 'first useful purchase in 3 seconds');
+economy.tick(.25);
+check(economy.currency.eq(4), 'first useful purchase within half a second');
 const first = economy.buy('generator');
-check(first.cost.eq(24) && economy.currency.eq(0) && first.power.eq(100), 'first purchase spends actual wallet and changes production');
+check(first.cost.eq(4) && economy.currency.eq(0) && first.power.eq(100), 'first purchase spends actual wallet and changes production');
 check(economy.levels.generator === 1 && economy.rate.eq(1000), 'upgrade permanent rate effect');
 check(economy.buy('generator') === null, 'repeated immediate purchase cannot race');
 const beforePause = economy.cooldown;
 economy.tick(20,{active:false});
 check(economy.cooldown === beforePause, 'cooldown also foreground-only');
 
-let activeSeconds = 3;
+let activeSeconds = .5;
 for (const id of ['generator', 'exponent', 'exponent', 'tower', 'generator', 'tower', 'exponent', 'tower']) {
   activeSeconds += simulateUntilOffer(economy, id);
   const offer = economy.offer(id);
@@ -174,3 +174,5 @@ finiteTree(stress.snapshot());
 check(!JSON.stringify(stress.snapshot()).includes('null'), 'no nonfinite JSON null corruption');
 check(performance.now()-start<5000, '50k giant-layer ticks terminate quickly');
 console.log(`Astral economy: ${assertions} assertions passed; playable tower escalation in ${activeSeconds.toFixed(1)} seconds; stress ${(performance.now()-start).toFixed(0)}ms`);
+
+const activeEconomy=new AstralEconomy();check(activeEconomy.awardAction().eq(4),'one deliberate action funds first upgrade');check(activeEconomy.buy('generator')?.power.eq(100),'active burst skips idle wait');const actionBefore=activeEconomy.currency;check(activeEconomy.awardAction(0).eq(0)&&activeEconomy.currency.eq(actionBefore),'zero action never adds income');

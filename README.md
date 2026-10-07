@@ -141,14 +141,36 @@ Focused expansion checks: `node test-fps.mjs && node test-pin-merge.mjs`. All te
 
 ### Astronomical reactor economy
 
-The material-skill milestones are the early-game bonus, not a number ceiling. A separate ASTRAL REACTOR has genuine huge currency, foreground production, and three permanent purchase tracks: generator, exponent accelerator, and tetration tower. Upgrades compare and subtract actual layered-number costs; the new power scales each newly earned main-run point. Run totals and records use the same number representation. Mini-game completion adds a real reactor bonus once; skips and zero-progress failures add none. The first generator is affordable in approximately three foreground seconds. A tested ordinary purchase route reaches three exponent layers in 46.8 foreground seconds.
+The material-skill milestones are the early-game bonus, not a number ceiling. A separate ASTRAL REACTOR has genuine huge currency, foreground production, and three permanent purchase tracks: generator, exponent accelerator, and tetration tower. Upgrades compare and subtract actual layered-number costs; the new power scales each newly earned main-run point. Run totals and records use the same number representation. Mini-game completion adds a real reactor bonus once; skips and zero-progress failures add none. The first generator is affordable in half a foreground second (or one deliberate action). A tested ordinary purchase route reaches three exponent layers in 4.5 foreground seconds.
 
-The UI moves from Japanese units (万 through 無量大数) to scientific notation and exponent towers. `10↑↑h; x` explicitly means h base-10 exponentiations applied to payload x; it is not a claim that the value equals conventional tetration with payload 1. The power tooltip explains the notation. This is layered floating-point approximation: negligible addends/multipliers can round away at extreme scales. It does not represent Graham's number or claim to calculate it exactly.
+The UI moves from Japanese units (万 through 無量大数) to scientific notation and exponent towers. `10↑↑h; x` explicitly means h base-10 exponentiations applied to payload x; it is not a claim that the value equals conventional tetration with payload 1. The power tooltip explains the notation. This is layered floating-point approximation: negligible addends/multipliers can round away at extreme scales. The approximate Astral wallet does not evaluate Graham's number. The separate exact-symbolic ascension layer described below represents its defining expression without evaluating its digits.
 
 Numeric implementation: official MIT-licensed break_eternity.js 2.1.3, vendored from commit `6ccf63b55d5b2c3f148c16e3ff907c6898542b72` at https://github.com/Patashu/break_eternity.js . No runtime download or package dependency. Source and license are local. Values save as finite `{sign, layer, mag}` objects; malformed values are rejected. Purchase levels and work per frame remain bounded, while scene speed, collision calculations and geometry stay ordinary safe numbers. Version-3 progression migrates version-2 materials and preserves best/mute preferences. Unknown future parent or reactor save versions are not overwritten.
 
-Foreground production also runs during mini-games. Paused/blurred/hidden time earns no income and cannot create an offline catch-up jump. Each purchase has a two-second foreground reactor cooldown, avoiding an unbounded instant purchase chain when high-layer arithmetic rounds small factors away. Purchases, result bonuses and records save immediately; foreground production checkpoints every two seconds and on page hide.
+Foreground production also runs during mini-games. Paused/blurred/hidden time earns no income and cannot create an offline catch-up jump. Each purchase has a 0.18-second foreground reactor cooldown, avoiding an unbounded instant purchase chain when high-layer arithmetic rounds small factors away. Purchases, result bonuses and records save immediately; foreground production checkpoints every two seconds and on page hide.
 
 New checks: `node test-astral.mjs` covers arithmetic, comparisons, huge costs/purchases, scientific/tetration round trips, corruption handling, idempotent results, finite serialization, normal-play escalation and million-layer bounded-work stress. Expanded progression/UI tests exercise migration, actual huge runner totals/records, purchase controls and foreground lifecycle. WebGL pixels and real audio output still require separate device verification.
 
 The three new games also have separate original procedural scores: cyber-pulse range, treasure bells for pins, and a bubbly merge synthesizer. All eleven scores and event effects share the existing bounded Web Audio scheduler.
+
+### Exact symbolic high-arrow ascension
+
+HYPER ASCENSION is an additional active prestige layer. BURST taps/holds, successful runner actions, mini-game events and completed rounds earn exact bounded integer fuel. Holding emits at most one pulse every 0.22 seconds; releasing, cancelling, blurring or opening a mini-game stops the held input. There is no idle or offline fuel. Advancing spends an exact integer fuel cost and rewrites the certified symbolic magnitude M to the next strictly larger expression. This is not a claim to subtract or numerically multiply Graham's number.
+
+The certified route includes:
+
+`2↑↑4 = 65,536 → 10^68 → 10^100 → 2↑↑5 → 10^(7×2^122) → 10^(10^100) → 2↑↑6 → 2↑↑100 → 2↑↑65,536 = 2↑↑↑4 → 3↑↑↑3 → g_1 → g_2 → g_4 → g_8 → g_16 → g_32 → g_64 → …`
+
+Here `g_0=4` and `g_(n+1)=3↑^(g_n)3`. The standard Graham number is exactly `g_64`, represented by its expression, not approximated digit arithmetic. The usual 八十華厳 interpretation of 不可説不可説転 is `10^(7×2^122)`; it correctly appears before googolplex and Graham. Beyond finite Graham-index milestones the game explicitly defines `B_0=g_64` and `B_(k+1)=g_(B_k)`. B is a game-defined recurrence, not an externally established named number.
+
+Canonical ordering supports only the certified families and identities. Unsupported arbitrary expressions return an unknown comparison instead of a guessed ordering. Magnitude requirements are non-consuming gates; fuel is the spendable resource. Ascension changes fuel rates/costs, unlocks the amplifier, and supplies a separate finite integration bonus to actual Astral production and runner scoring. That bonus is a game mechanic and is not an evaluation of the symbolic magnitude.
+
+Version-4 progression preserves existing version-3 Astral currency, owned upgrades, materials, scores and sound settings. Persistent per-source monotone receipts prevent old action rewards from reappearing after receipt-buffer eviction. Future save schemas are preserved. Physics, geometry, fuel, save size and per-frame work remain bounded.
+
+`node test-hyper.mjs` validates the certified order, exact identities, unknown-comparison handling, purchases, active speed, persistent idempotence and finite stress behavior. Expanded UI tests verify held-input cleanup, no idle fuel, rank persistence and real production integration.
+
+Definition references:
+- Knuth's original arrow notation paper: https://cse-robotics.engr.tamu.edu/dshell/cs625/finiteness.pdf
+- Graham recurrence and standard G: https://mathworld.wolfram.com/GrahamsNumber.html
+- NRI essay corroborating the conventional 不可説不可説転 expression: https://www.nri.com/-/media/Corporate/jp/Files/PDF/knowledge/publication/kinyu_itf/2013/02/itf_201302_5.pdf (used only for that expression, not its higher-arrow explanation)
+- National Diet Library's references to the Buddhist numerical tradition: https://crd.ndl.go.jp/reference/detail?page=ref_view&id=1000322865
