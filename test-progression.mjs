@@ -16,7 +16,7 @@ for(const {id} of AD_GAMES){const s=new AdSession(id);s.roundTime=s.rule.limit;s
 const timing=new AdSession('snow');timing.update(NaN);timing.update(Infinity);timing.update(-2);assert.equal(timing.elapsed,0);timing.update(100,false);assert.equal(timing.elapsed,0);
 console.log('PASS: versioned save migration/validation/storage failures; preserved best+mute; exact-once bounded receipts, zero skip/idle rewards, clear chains; ten permanent effects and capped ×32 milestone growth; all current games success/failure freeze, active timer and early return guard.');
 
-for(const id of ['range','pins','merge']){const s=new AdSession(id);s.model.outcome='failure';s.checkResult();assert.equal(s.result.outcome,'failure');}assert.equal(new AdSession('pins',{round:4}).model.round,4);assert.equal(new AdSession('merge',{round:4}).model.targetTier,6);assert.equal(AD_GAMES.length,10);
+for(const id of ['range','pins','merge']){const s=new AdSession(id);s.model.outcome='failure';s.checkResult();assert.equal(s.result.outcome,'failure');}assert.equal(new AdSession('pins',{round:4}).model.round,4);assert.equal(new AdSession('merge',{round:4}).model.targetTier,6);assert(AD_GAMES.length>=11);assert(AD_GAMES.some(g=>g.id==='kitchen'));
 // Every named material changes its own real runner mechanic at level one.
 const pair=id=>{const a=new RunnerGame(),b=new RunnerGame({upgrades:{[id]:1}});a.start();b.start();return[a,b]};
 {const[a,b]=pair('snow');a.boostEnergy=b.boostEnergy=0;a.update(.01);b.update(.01);assert(b.boostEnergy>a.boostEnergy);}

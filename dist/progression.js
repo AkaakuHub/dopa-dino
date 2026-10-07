@@ -14,6 +14,7 @@ export const SKILLS=[
   {id:'range',icon:'⌖',material:'照準チップ',name:'オートブラスター',effect:l=>l?`${Math.max(3,12-l).toFixed(0)}秒ごとに障害物を破壊`:'自動射撃 未開放',color:'#6cddff'},
   {id:'pins',icon:'◆',material:'宝石',name:'コイン価値',effect:l=>`コイン得点 +${l*25}%`,color:'#ffd27c'},
   {id:'merge',icon:'◎',material:'コア',name:'フィーバー延長',effect:l=>`無敵 +${(l*.5).toFixed(1)}秒`,color:'#b6a0ff'}
+  ,{id:'kitchen',icon:'🍲',material:'スパイス',name:'キャンプ給仕',effect:l=>`配膳コンボ +${l*10}%`,color:'#ffd36f'}
 ];
 const MAX=999999,clampInt=(n,max=MAX)=>Number.isFinite(n)?Math.min(max,Math.max(0,Math.floor(n))):0;
 export const threshold=level=>level<=0?0:4*level*(level+1);

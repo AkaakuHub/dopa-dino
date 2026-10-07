@@ -2,7 +2,7 @@
 import { inflationForRound, makeRiskReward, armRiskReward, settleRiskReward } from './ad-inflation.js';
 export const GAME_META = [
   {id:'golf',name:'POCKET PUTT',hint:'ボールから後ろへドラッグして、離すとショット',keys:'← → / A D で照準 · ↑ ↓ で強さ · Space で打つ',accent:'#83f0bf'},
-  {id:'breaker',name:'NEON BREAKER',hint:'左右にドラッグしてパドルを動かす · タップで発射',keys:'← → / A D で移動 · Space で発射',accent:'#74eaff'}
+  {id:'breaker',name:'NEON BREAKER',hint:'左右にドラッグしてパドルを動かす · タップで発射 · Rでリスク報酬',keys:'← → / A D で移動 · Space で発射 · R/X リスク ×2',accent:'#74eaff'}
 ];
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const length=(x,z)=>Math.hypot(x,z);
@@ -74,6 +74,7 @@ export class NeonBreaker {
   get difficultyScale(){return this.inflation.difficulty;}
   get multiball(){return Math.max(0,this.balls.length-1);}
   get riskMultiplier(){return this.riskReward?.multiplier||1;}
+  get riskFactor(){return this.riskReward?.armed?1+.08*(this.riskMultiplier-1):1;}
   get scoreMultiplier(){return this._scoreMultiplier||1;}
   set scoreMultiplier(value){this._scoreMultiplier=Math.max(1,Math.min(16,Number.isFinite(value)?value:1));}
   get stats(){return [['WAVE',String(this.wave)],['SCORE',String(this.score)],['LIVES','♥'.repeat(this.lives)]];}
@@ -82,26 +83,26 @@ export class NeonBreaker {
   reset(){
     this.wave=1;this.score=0;this.lives=3;this.combo=0;this.chain=0;this.scoreMultiplier=this.inflation.reward;
     this.paddle={x:0,z:4.95,w:1.9,target:0,vx:0};
-    this.power={wide:0,fire:0,slow:0,multi:0};this.pickups=[];this.trail=[];this.balls=[];
+    this.power={wide:0,fire:0,slow:0,multi:0};this.itemLevels={wide:0,fire:0,slow:0,multi:0};this.pickups=[];this.trail=[];this.balls=[];
     this.riskReward=makeRiskReward(2);this.risk=this.riskReward;this.riskBonus=1;
     this.dead=0;this.wavePause=0;this.makeWave();this.prepareBall(1.05);
   }
   makeWave(){
     this.bricks=[];
-    const rows=4+Math.min(2,Math.floor((this.wave-1+this.inflation.step)/2)),pattern=(this.wave-1)%4;
+    const rows=Math.min(6,Math.max(4,this.inflation.breakerRows+Math.min(2,Math.floor((this.wave-1)/2)))),pattern=(this.wave-1)%4;
     let id=0;
     for(let row=0;row<rows;row++)for(let col=0;col<7;col++){
       const skip=pattern===1&&(row+col)%4===0||pattern===2&&Math.abs(col-3)>2+row%2||pattern===3&&row%2===1&&(col===1||col===5);if(skip)continue;
-      const armor=this.wave>1&&(row+col+this.wave+this.inflation.step)%4===0?Math.min(3,2+Math.floor(this.inflation.step/8)):1;
+      const armor=this.wave>1&&(row+col+this.wave+this.inflation.step)%4===0?Math.min(3,Math.max(2,this.inflation.breakerArmor)):1;
       this.bricks.push({id:id++,x:(col-3)*1.25,z:-4.65+row*.73,w:1.1,d:.56,hp:armor,maxHp:armor,color:(row+this.wave-1)%5,hit:0});
     }
     this.waveBricks=this.bricks.length;this.pickups.length=0;this.destroyed=0;
   }
   prepareBall(delay=.65){this.balls=[{x:this.paddle.x,z:this.paddle.z-.44,vx:0,vz:0,r:.16}];this.serving=delay;this.trail.length=0;}
-  baseSpeed(){return Math.min(15.2,(6.6+(this.wave-1)*.46+this.destroyed*.035)*this.inflation.speed*(this.power.slow>0?.73:1));}
+  baseSpeed(){const slow=this.power.slow>0?Math.max(.58,.73-.035*this.itemLevels.slow):1;return Math.min(15.2,(6.6+(this.wave-1)*.46+this.destroyed*.035)*this.inflation.speed*this.riskFactor*slow);}
   launch(){if(this.dead||this.wavePause||this.serving===0||!this.balls.length)return false;this.serving=0;const angle=.22*Math.sin(this.wave*1.7+this.attempt);const speed=this.baseSpeed();for(const ball of this.balls){ball.vx=Math.sin(angle)*speed;ball.vz=-Math.cos(angle)*speed;}if(this.power.multi>0&&this.balls.length===1)this.spawnMultiball();this.emit('launch',{x:this.ball.x,z:this.ball.z,balls:this.balls.length});this.message='';return true;}
-  chooseRisk(multiplier=2){this.riskReward.multiplier=Math.max(2,Math.min(4,Math.floor(Number.isFinite(multiplier)?multiplier:2)));return armRiskReward(this.riskReward,1);}
-  armRisk(multiplier=2){return this.chooseRisk(multiplier);}
+  chooseRisk(multiplier=2,stake=1){if(this.riskReward.armed||this.wavePause||this.dead)return false;this.riskReward.multiplier=Math.max(2,Math.min(4,Math.floor(Number.isFinite(multiplier)?multiplier:2)));this.say('RISK ARMED · CLEAR ×'+this.riskMultiplier,1.35);return armRiskReward(this.riskReward,stake);}
+  armRisk(multiplier=2,stake=1){return this.chooseRisk(multiplier,stake);}
   action(code){if(code==='Space')return this.launch();if(code==='KeyR'||code==='KeyX')return this.chooseRisk(2);return false;}
   pointerDown(u,v,world){this.pointerMove(u,v,world);this.launch();}
   pointerMove(u,v,world){this.paddle.target=clamp(world?.x??u*5,-4.5+this.paddle.w/2,4.5-this.paddle.w/2);}
@@ -112,14 +113,15 @@ export class NeonBreaker {
     if(this.serving||this.dead||!this.balls.length)return false;
     const source=this.balls[0],speed=Math.max(1,this.baseSpeed());
     while(this.balls.length<3){const sign=this.balls.length===1?-1:1,angle=Math.atan2(source.vx,-source.vz)+sign*.2;this.balls.push({x:source.x,z:source.z,vx:Math.sin(angle)*speed,vz:-Math.cos(angle)*speed,r:.16});}
-    this.power.multi=9;this.emit('multiball',{balls:this.balls.length});this.say('MULTIBALL ×'+this.balls.length,1.2);return true;
+    this.power.multi=Math.max(9,this.power.multi||0);this.emit('multiball',{balls:this.balls.length});this.say('MULTIBALL ×'+this.balls.length,1.2);return true;
   }
-  hitBrick(b,ball=this.ball){b.hp--;b.hit=.16;if(b.hp<=0){this.destroyed++;this.combo++;this.updateMultiplier();this.scorePoints(10*this.wave+Math.min(this.combo,12)*2);this.emit('brick',{x:b.x,z:b.z,color:b.color,multiplier:this.scoreMultiplier});if((b.id+this.wave*2+this.inflation.step)%6===0&&this.pickups.length<6){const kinds=['wide','fire','slow','multi'];const kind=kinds[(Math.floor(b.id/6)+this.wave-1+this.inflation.step)%kinds.length];this.pickups.push({x:b.x,z:b.z,kind,phase:b.id*.7});}}else{this.scorePoints(4);this.emit('armor',{x:b.x,z:b.z,color:b.color});}}
-  collect(p){const kind=p.kind==='multiball'?'multi':p.kind;if(!['wide','fire','slow','multi'].includes(kind))return false;if(kind==='multi'){this.power.multi=9;this.spawnMultiball();}else this.power[kind]=kind==='wide'?11:kind==='fire'?8:7;this.scorePoints(25);this.say(kind==='wide'?'WIDE PADDLE':kind==='fire'?'FIREBALL!':kind==='multi'?'MULTIBALL!':'SLOW MOTION',1.5);this.emit('power',{x:p.x,z:p.z,kind:kind});return true;}
+  hitBrick(b,ball=this.ball){b.hp--;b.hit=.16;if(b.hp<=0){this.destroyed++;this.combo++;this.updateMultiplier();this.scorePoints(10*this.wave+Math.min(this.combo,12)*2);this.emit('brick',{x:b.x,z:b.z,color:b.color,multiplier:this.scoreMultiplier});const chance=this.inflation.breakerPickupRate*(this.riskReward.armed?.82:1);if((b.id+this.wave*2+this.inflation.step)%6<chance*1.2&&this.pickups.length<6){const kinds=['wide','fire','slow','multi'];const kind=kinds[(Math.floor(b.id/6)+this.wave-1+this.inflation.step)%kinds.length];this.pickups.push({x:b.x,z:b.z,kind,phase:b.id*.7});}}else{this.scorePoints(4);this.emit('armor',{x:b.x,z:b.z,color:b.color});}}
+  collect(p){const kind=p.kind==='multiball'?'multi':p.kind;if(!['wide','fire','slow','multi'].includes(kind))return false;this.itemLevels[kind]=Math.min(3,(this.itemLevels[kind]||0)+1);const level=this.itemLevels[kind],scale=this.inflation.breakerPower*(1+.16*(level-1));if(kind==='multi'){this.power.multi=Math.max(9,9*scale);this.spawnMultiball();}else this.power[kind]=Math.max(kind==='wide'?11:kind==='fire'?8:7,(kind==='wide'?11:kind==='fire'?8:7)*scale);this.scorePoints(25*scale);this.say((level>1?'UPGRADE ':'')+(kind==='wide'?'WIDE PADDLE':kind==='fire'?'FIREBALL!':kind==='multi'?'MULTIBALL!':'SLOW MOTION')+' Lv.'+level,1.5);this.emit('power',{x:p.x,z:p.z,kind:kind,level,scale});if(level>1)this.emit('upgrade',{x:p.x,z:p.z,kind,level});return true;}
+  settleRisk(success){if(this.riskReward?.armed||success){this.riskBonus=settleRiskReward(this.riskReward,success);}return this.riskBonus;}
   lose(){
     if(this.dead)return;this.lives--;this.combo=0;this.updateMultiplier();this.emit('loss',{x:this.ball?.x??0,z:5.8});
     this.balls.length=0;
-    if(this.lives<=0){this.best=Math.max(this.best,this.score);this.riskBonus=settleRiskReward(this.riskReward,false);this.dead=1.2;this.serving=0;this.say('REBOOT · TRY AGAIN',1.2);}
+    if(this.lives<=0){this.best=Math.max(this.best,this.score);this.settleRisk(false);this.dead=1.2;this.serving=0;this.say('REBOOT · TRY AGAIN',1.2);}
     else{this.say('READY FOR THE REBOUND',1);this.prepareBall(.9);}
   }
   stepBall(ball,step){
@@ -127,7 +129,8 @@ export class NeonBreaker {
     if(ball.x<-4.5+ball.r){ball.x=-4.5+ball.r;ball.vx=Math.abs(ball.vx);this.emit('wall',{x:ball.x,z:ball.z});}
     else if(ball.x>4.5-ball.r){ball.x=4.5-ball.r;ball.vx=-Math.abs(ball.vx);this.emit('wall',{x:ball.x,z:ball.z});}
     if(ball.z<-5.55+ball.r){ball.z=-5.55+ball.r;ball.vz=Math.abs(ball.vz);this.emit('wall',{x:ball.x,z:ball.z});}
-    if(ball.vz>0&&oldZ<=this.paddle.z-.17-ball.r&&ball.z>=this.paddle.z-.17-ball.r&&Math.abs(ball.x-this.paddle.x)<=this.paddle.w/2+ball.r){const offset=clamp((ball.x-this.paddle.x)/(this.paddle.w/2),-1,1),angle=offset*1.04+clamp(this.paddle.vx*.009,-.12,.12),speed=this.baseSpeed();ball.z=this.paddle.z-.17-ball.r-.003;ball.vx=Math.sin(angle)*speed;ball.vz=-Math.max(.43,Math.cos(angle))*speed;this.combo=0;this.updateMultiplier();this.emit('paddle',{x:ball.x,z:ball.z});}
+    const catchRadius=ball.r*this.inflation.closeCall*(this.riskReward.armed?.96:1);
+    if(ball.vz>0&&oldZ<=this.paddle.z-.17-ball.r&&ball.z>=this.paddle.z-.17-ball.r&&Math.abs(ball.x-this.paddle.x)<=this.paddle.w/2+catchRadius){const offset=clamp((ball.x-this.paddle.x)/(this.paddle.w/2),-1,1),angle=offset*1.04+clamp(this.paddle.vx*.009,-.12,.12),speed=this.baseSpeed();ball.z=this.paddle.z-.17-ball.r-.003;ball.vx=Math.sin(angle)*speed;ball.vz=-Math.max(.43,Math.cos(angle))*speed;this.combo=0;this.updateMultiplier();this.emit('paddle',{x:ball.x,z:ball.z});}
     for(const b of this.bricks){if(b.hp<=0||b.hit>.145)continue;const vx=ball.vx,vz=ball.vz;if(circleBox(ball,b,ball.r,1)){if(this.power.fire>0){ball.vx=vx;ball.vz=vz;b.hp=1;}this.hitBrick(b,ball);break;}}
     const speed=length(ball.vx,ball.vz),desired=this.baseSpeed();if(speed>.01){ball.vx*=desired/speed;ball.vz*=desired/speed;}if(Math.abs(ball.vz)<desired*.2){ball.vz=(ball.vz>=0?1:-1)*desired*.2;ball.vx=(ball.vx>=0?1:-1)*Math.sqrt(Math.max(0,desired*desired-ball.vz*ball.vz));}
     return ball.z>6.1;
@@ -135,12 +138,12 @@ export class NeonBreaker {
   update(dt){
     dt=clamp(Number.isFinite(dt)?dt:0,0,.05);this.time+=dt;this.messageTime=Math.max(0,this.messageTime-dt);if(!this.messageTime)this.message='';for(const b of this.bricks)b.hit=Math.max(0,b.hit-dt);
     if(this.dead){this.dead=Math.max(0,this.dead-dt);if(!this.dead){this.attempt++;this.reset();this.emit('restart');}return;}
-    for(const key of Object.keys(this.power))this.power[key]=Math.max(0,this.power[key]-dt);this.paddle.w=this.power.wide>0?3:1.9;
+    for(const key of Object.keys(this.power))this.power[key]=Math.max(0,this.power[key]-dt);this.paddle.w=this.power.wide>0?Math.min(3.55,3+.2*Math.max(0,(this.itemLevels.wide||1)-1)):1.9;
     const dir=(this.keys.has('ArrowRight')||this.keys.has('KeyD')?1:0)-(this.keys.has('ArrowLeft')||this.keys.has('KeyA')?1:0);if(dir)this.paddle.target=this.paddle.x+dir*dt*11;this.paddle.target=clamp(this.paddle.target,-4.5+this.paddle.w/2,4.5-this.paddle.w/2);const dx=clamp(this.paddle.target-this.paddle.x,-dt*18,dt*18);this.paddle.x+=dx;this.paddle.vx=dt?dx/dt:0;
     if(this.wavePause){this.wavePause=Math.max(0,this.wavePause-dt);if(!this.wavePause){this.wave++;this.chain++;this.makeWave();this.prepareBall(.7);this.updateMultiplier();this.emit('wave',{wave:this.wave,chain:this.chain,multiplier:this.scoreMultiplier});}return;}
     if(this.serving){for(const ball of this.balls){ball.x=this.paddle.x;ball.z=this.paddle.z-.44;}this.serving=Math.max(0.000001,this.serving-dt);if(this.serving<=.000001)this.launch();return;}
     for(let i=this.pickups.length-1;i>=0;i--){const p=this.pickups[i];p.z+=dt*2;if(Math.abs(p.z-this.paddle.z)<.45&&Math.abs(p.x-this.paddle.x)<this.paddle.w/2+.27){this.collect(p);this.pickups.splice(i,1);}else if(p.z>6.4)this.pickups.splice(i,1);}
-    for(let remain=dt;remain>1e-8;){const step=Math.min(remain,1/200);remain-=step;for(let i=this.balls.length-1;i>=0;i--){if(this.stepBall(this.balls[i],step)){this.balls.splice(i,1);if(!this.balls.length){this.lose();break;}}}if(this.destroyed===this.waveBricks){this.wavePause=1.15;this.riskBonus=settleRiskReward(this.riskReward,true);this.scorePoints(100*this.wave*this.riskBonus);this.say('WAVE CLEAR!',1.4);this.emit('clear',{wave:this.wave,multiplier:this.scoreMultiplier,risk:this.riskBonus});break;}if(this.dead)break;}
+    for(let remain=dt;remain>1e-8;){const step=Math.min(remain,1/200);remain-=step;for(let i=this.balls.length-1;i>=0;i--){if(this.stepBall(this.balls[i],step)){this.balls.splice(i,1);if(!this.balls.length){this.lose();break;}}}if(this.destroyed===this.waveBricks){this.wavePause=1.15;this.settleRisk(true);this.scorePoints(100*this.wave*this.riskBonus);this.say('WAVE CLEAR!',1.4);this.emit('clear',{wave:this.wave,multiplier:this.scoreMultiplier,risk:this.riskBonus});break;}if(this.dead)break;}
     this.trail.unshift({x:this.ball?.x??0,z:this.ball?.z??0});if(this.trail.length>16)this.trail.pop();
   }
 }

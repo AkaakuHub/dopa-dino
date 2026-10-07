@@ -2,13 +2,14 @@ import { GAME_META as FPS_META, GAME_MODELS as FPS_MODELS } from './ads-fps.js';
 import { GAME_META as PIN_MERGE_META, GAME_MODELS as PIN_MERGE_MODELS } from './ads-pin-merge.js';
 import { GAME_META as GATES_STACK_META, GAME_MODELS as GATES_STACK_MODELS } from './ads-gates-stack.js';
 import { GAME_META as GOLF_BREAKER_META, GAME_MODELS as GOLF_BREAKER_MODELS } from './ads-golf-breaker.js';
+import { GAME_META as KITCHEN_META, GAME_MODELS as KITCHEN_MODELS } from './ads-kitchen.js';
 import { inflationForRound, makeRiskReward, armRiskReward, settleRiskReward } from './ad-inflation.js';
 export { inflationForRound, makeRiskReward, armRiskReward, settleRiskReward } from './ad-inflation.js';
 export const AD_GAMES = [
   {id:'snow',name:'FROSTFIRE CAMP',hint:'ドラッグで移動',keys:'↑ ↓ ← → / WASD',accent:'#ffb34d'},
   {id:'hole',name:'CITY FEAST',hint:'ドラッグで移動',keys:'↑ ↓ ← → / WASD',accent:'#69dfff'},
   {id:'helix',name:'SPIRAL DROP',hint:'左右にドラッグで回転',keys:'← → / A D',accent:'#ff9454'},
-  ...GATES_STACK_META,...GOLF_BREAKER_META,...FPS_META,...PIN_MERGE_META
+  ...GATES_STACK_META,...GOLF_BREAKER_META,...FPS_META,...PIN_MERGE_META,...KITCHEN_META
 ];
 export const AD_ROTATION_KEY='dino-overdrive-ad-rotation';
 export const AD_MISSION_ROTATION_KEY='dino-overdrive-mission-rotation';
@@ -42,6 +43,7 @@ export const ROUND_RULES={
   range:{limit:45,goal:12,label:'ドローン12機を撃破',value:m=>m.hits,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
   pins:{limit:90,goal:12,label:'12個の宝石を救う',value:m=>m.saved,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
   merge:{limit:150,goal:1,label:'同じ数字を合体',value:m=>Math.max(0,(2**m.bestTier-2)/(2**m.targetTier-2)),win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
+  kitchen:{limit:90,goal:3,label:'3皿を北の食堂へ届ける',value:m=>m.delivered,win:m=>m.delivered>=3,fail:m=>m.outcome==='failure'},
   snow:{limit:75,goal:18,label:'薪を18本届ける',value:m=>m.delivered,win:m=>m.delivered>=18},
   hole:{limit:60,goal:24,label:'街の物を24個吸い込む',value:m=>m.eaten,win:m=>m.eaten>=24},
   helix:{limit:90,goal:18,label:'18段降りる',value:m=>m.depth,win:m=>m.depth>=18,fail:m=>m.dead>0},
@@ -51,12 +53,12 @@ export const ROUND_RULES={
   breaker:{limit:150,goal:28,label:'ブロックを全て壊す',value:m=>m.destroyed,win:m=>m.wavePause>0||m.wave>1,fail:m=>m.dead>0}
 };
 export class AdSession {
-  constructor(kind,{round=1,receipt='',missionId=kind}={}){this.kind=kind;this.missionId=missionId;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);const baseRule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};this.rule=(kind==='range'||kind==='breaker')?{...baseRule,goal:kind==='range'?this.model.goal:this.model.waveBricks,label:kind==='range'?`ドローン${this.model.goal}機を撃破`:baseRule.label}:baseRule;}
+  constructor(kind,{round=1,receipt='',missionId=kind}={}){this.kind=kind;this.missionId=missionId;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS,...KITCHEN_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);const baseRule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};this.rule=(kind==='range'||kind==='breaker')?{...baseRule,goal:kind==='range'?this.model.goal:this.model.waveBricks,label:kind==='range'?`ドローン${this.model.goal}機を撃破`:baseRule.label}:baseRule;}
   get ready(){return this.elapsed>=5&&!this.closed;}
   get remaining(){return Math.max(0,Math.ceil(5-this.elapsed));}
   get progress(){return Math.min(1,Math.max(0,this.rule.value(this.model)/this.rule.goal));}
   get seconds(){return Math.max(0,Math.ceil(this.rule.limit-this.roundTime));}
-  checkResult(){if(this.result||this.closed)return this.result;const outcome=this.rule.win(this.model)?'success':this.rule.fail?.(this.model)||this.model.outcome==='failure'||this.roundTime>=this.rule.limit?'failure':null;if(outcome){this.model.keys.clear();this.model.pointerCancel?.();this.result={outcome,progress:this.progress,seconds:this.roundTime,metric:this.model.resultMetric||`${Math.floor(this.rule.value(this.model))} / ${this.rule.goal}`,receipt:this.receipt,rewardMultiplier:Math.max(1,Math.min(4,Number.isFinite(this.model.riskBonus)?this.model.riskBonus:1))};}return this.result;}
+  checkResult(){if(this.result||this.closed)return this.result;const outcome=this.rule.win(this.model)?'success':this.rule.fail?.(this.model)||this.model.outcome==='failure'||this.roundTime>=this.rule.limit?'failure':null;if(outcome){this.model.keys.clear();this.model.pointerCancel?.();if(outcome==='failure')this.model.settleRisk?.(false);this.result={outcome,progress:this.progress,seconds:this.roundTime,metric:this.model.resultMetric||`${Math.floor(this.rule.value(this.model))} / ${this.rule.goal}`,receipt:this.receipt,rewardMultiplier:Math.max(1,Math.min(4,Number.isFinite(this.model.riskBonus)?this.model.riskBonus:1))};}return this.result;}
   update(dt,active=true){if(this.closed||!active)return;dt=Number.isFinite(dt)?Math.max(0,dt):0;this.elapsed+=dt;if(this.result)return;const step=Math.min(dt,.05);this.roundTime+=step;this.model.update(step);this.checkResult();}
   // Closing is a one-shot transition. A second close must not look successful:
   // callers use the return value to guard revive/settlement side effects.
@@ -68,10 +70,38 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 function move(p,target,keys,dt,speed,bounds){let dx=(keys.has('ArrowRight')||keys.has('KeyD')?1:0)-(keys.has('ArrowLeft')||keys.has('KeyA')?1:0),dz=(keys.has('ArrowDown')||keys.has('KeyS')?1:0)-(keys.has('ArrowUp')||keys.has('KeyW')?1:0);if(dx||dz){p.target=null;const n=Math.hypot(dx,dz);p.x+=dx/n*speed*dt;p.z+=dz/n*speed*dt;}else if(target){dx=target.x-p.x;dz=target.z-p.z;const d=Math.hypot(dx,dz),s=Math.min(d,speed*dt);if(d>.04){p.x+=dx/d*s;p.z+=dz/d*s;}}p.x=clamp(p.x,-bounds,bounds);p.z=clamp(p.z,-bounds,bounds);}
 export class SnowCamp {
-  constructor(round=1){this.round=Math.max(1,Math.floor(Number.isFinite(round)?round:1));this.inflation=inflationForRound(this.round);this.riskReward=makeRiskReward(2);this.time=0;this.eventId=0;this.events=[];this.keys=new Set();this.player={x:0,z:3,target:null};this.wood=0;this.delivered=0;this.heat=26;this.level=1;this.warm=2;this.chop=0;this.pop=0;this.nodes=[{x:-3.8,z:1,logs:99},{x:3.5,z:2.6,logs:99},{x:-2.8,z:-3.8,logs:99},{x:3.4,z:-2.5,logs:99}];this.message='薪を集めて、炉に届けよう';}
+  constructor(round=1){this.round=Math.max(1,Math.floor(Number.isFinite(round)?round:1));this.inflation=inflationForRound(this.round);this.riskReward=makeRiskReward(2);this.time=0;this.eventId=0;this.events=[];this.keys=new Set();this.player={x:0,z:3,target:null};this.wood=0;this.delivered=0;this.heat=26;this.level=1;this.warm=2;this.chop=0;this.pop=0;
+    this.nodes=[{x:-3.8,z:1,logs:99},{x:3.5,z:2.6,logs:99},{x:-2.8,z:-3.8,logs:99},{x:3.4,z:-2.5,logs:99}];
+    // North-camp care is intentionally a small, readable loop: residents lose
+    // warmth slowly, smoke alarms can start a contained fire, and hired
+    // lumberjacks keep the furnace supplied while the player cares for people.
+    this.residents=[{id:'mara',name:'Mara',x:-3.5,z:-2.4,warmth:72,hunger:68,health:100,care:0},{id:'oren',name:'Oren',x:2.2,z:-3.8,warmth:72,hunger:68,health:100,care:0},{id:'siv',name:'Siv',x:4,z:.2,warmth:72,hunger:68,health:100,care:0},{id:'tala',name:'Tala',x:-3.2,z:3.8,warmth:72,hunger:68,health:100,care:0}];
+    this.fires=[];this.lumberjacks=0;this.hireCost=6;this.workerClock=0;this.fireClock=0;this.lastCare=-10;this.message='薪を集めて、炉に届けよう';
+  }
+  get stats(){const cared=this.residents.filter(r=>r.care>0).length;return [['HEAT',Math.round(this.heat)+'°'],['WOOD',this.wood+'/6'],['CAMP',`${cared}/${this.residents.length}`]];}
   emit(type,data={}){this.events.push({id:++this.eventId,type,time:this.time,...data});if(this.events.length>20)this.events.shift();}
+  action(code){if(code==='KeyH')return this.hireLumberjack();if(code==='KeyX'){const fire=this.fires.find(f=>dist(this.player,f)<1.8);return fire?this.respondToFire(this.residents.findIndex(r=>r.id===fire.resident)):false;}return false;}
   point(x,z){this.player.target={x:clamp(x,-5,5),z:clamp(z,-5,5)};}
-  update(dt){this.time+=dt;this.pop=Math.max(0,this.pop-dt);move(this.player,this.player.target,this.keys,dt,4,5);this.heat=Math.max(4,this.heat-dt*.6*this.inflation.speed);const node=this.nodes.find(n=>dist(n,this.player)<1.2);if(node&&this.wood<6){this.chop+=dt;if(this.chop>=.28*this.inflation.difficulty){this.chop=0;this.wood++;this.emit('chop',{wood:this.wood});this.pop=.4;this.message='薪 +1　中央の炉に届けよう';}}else this.chop=0;if(dist(this.player,{x:0,z:0})<1.3&&this.wood){const previousLevel=this.level;this.emit('furnace',{wood:this.wood});this.delivered+=this.wood;this.heat=Math.min(100,this.heat+this.wood*9);this.wood=0;this.level=1+Math.floor(this.delivered/6);if(this.level>previousLevel)this.emit('upgrade',{level:this.level});this.warm=Math.min(12,2+this.delivered);this.message=this.warm>=12?'みんな、あったかい！ 炉をもっと育てよう':'炉がレベルアップ！ 街が暖まった';this.pop=1;}}
+  // Employ a lumberjack after six delivered logs. The explicit method keeps
+  // hiring deterministic and makes it safe for keyboard/UI callers to retry.
+  hireLumberjack(){if(this.delivered<this.hireCost)return false;this.delivered-=this.hireCost;this.lumberjacks=Math.min(3,this.lumberjacks+1);this.emit('hire',{count:this.lumberjacks});this.message='木こりを雇った！ 薪集めを任せよう';return true;}
+  careResident(id){const resident=typeof id==='number'?this.residents[id]:this.residents.find(r=>r.id===id);if(!resident||dist(this.player,resident)>1.45)return false;resident.warmth=Math.min(100,resident.warmth+20);resident.hunger=Math.min(100,resident.hunger+12);resident.health=Math.min(100,resident.health+5);resident.care++;this.lastCare=this.time;this.emit('care',{resident:resident.id,warmth:resident.warmth});this.message=`${resident.name}を世話した`;return true;}
+  igniteFire(index=0){const resident=this.residents[index%this.residents.length];if(this.fires.some(f=>f.resident===resident.id))return false;this.fires.push({resident:resident.id,x:resident.x,z:resident.z,progress:0});this.emit('fire',{resident:resident.id});this.message='火事！ 住民の小屋へ急ごう';return true;}
+  respondToFire(index=0){const resident=this.residents[index%this.residents.length],i=this.fires.findIndex(f=>f.resident===resident.id);if(i<0||dist(this.player,resident)>1.8)return false;this.fires.splice(i,1);resident.health=Math.max(20,resident.health-4);this.heat=Math.max(4,this.heat-2);this.emit('extinguish',{resident:resident.id});this.message='消火成功！';return true;}
+  putOutFire(index=0){return this.respondToFire(index);}
+  care(id){return this.careResident(id);}
+  update(dt){dt=Number.isFinite(dt)?Math.max(0,Math.min(dt,.05)):0;this.time+=dt;this.pop=Math.max(0,this.pop-dt);move(this.player,this.player.target,this.keys,dt,4,5);this.heat=Math.max(4,this.heat-dt*.6*this.inflation.speed);
+    for(const resident of this.residents){resident.warmth=Math.max(0,resident.warmth-dt*(this.heat<18?.22:.075)*this.inflation.speed);resident.hunger=Math.max(0,resident.hunger-dt*.05);if(resident.warmth<18)resident.health=Math.max(0,resident.health-dt*.08);}
+    this.workerClock+=dt;if(this.lumberjacks&&this.workerClock>=Math.max(.9,2.4/this.lumberjacks)){this.workerClock=0;if(this.wood<6){this.wood++;this.emit('lumberjack',{wood:this.wood,count:this.lumberjacks});this.message='木こりが薪を届けた';}}
+    // A low-heat camp can flare up once per short interval. It is explicit and
+    // recoverable, while tests and ordinary opening seconds remain deterministic.
+    this.fireClock+=dt;if(this.heat<12&&this.fireClock>8&&this.fires.length<1){this.fireClock=0;this.igniteFire(Math.floor(this.time)%this.residents.length);}
+    for(const fire of this.fires){fire.progress+=dt;if(fire.progress>7){const resident=this.residents.find(r=>r.id===fire.resident);if(resident)resident.health=Math.max(0,resident.health-dt*.9);}}
+    const node=this.nodes.find(n=>dist(n,this.player)<1.2);if(node&&this.wood<6){this.chop+=dt;if(this.chop>=.28*this.inflation.difficulty){this.chop=0;this.wood++;this.emit('chop',{wood:this.wood});this.pop=.4;this.message='薪 +1　中央の炉に届けよう';}}else this.chop=0;
+    if(dist(this.player,{x:0,z:0})<1.3&&this.wood){const previousLevel=this.level;this.emit('furnace',{wood:this.wood});this.delivered+=this.wood;this.heat=Math.min(100,this.heat+this.wood*9);this.wood=0;this.level=1+Math.floor(this.delivered/6);if(this.level>previousLevel)this.emit('upgrade',{level:this.level});this.warm=Math.min(12,2+this.delivered);this.message=this.warm>=12?'みんな、あったかい！ 炉をもっと育てよう':'炉がレベルアップ！ 街が暖まった';this.pop=1;}
+    const resident=this.residents.find(r=>dist(this.player,r)<1.45);if(resident&&this.keys.has('Space')&&this.time-this.lastCare>.35)this.careResident(resident.id);
+    const fire=this.fires.find(f=>dist(this.player,f)<1.8);if(fire&&this.keys.has('KeyX'))this.respondToFire(this.residents.findIndex(r=>r.id===fire.resident));
+  }
 }
 // Nine deterministic city chunks. Leaving a chunk recycles its content instead of
 // retaining an ever-growing map of meshes or visited coordinates.

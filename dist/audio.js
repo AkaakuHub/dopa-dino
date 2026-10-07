@@ -25,14 +25,16 @@ export const MUSIC = {
     melody:[12,19,rest,24,rest,19,16,rest,14,rest,21,19,rest,16,19,rest], bassline:[0,rest,rest,7,rest,0,rest,12,0,rest,rest,7,rest,0,7,rest], kick:[0,7,8], snare:[12], hats:[2,6,10,14], chord:[0,4,9], pad:.7 },
   merge: { bpm:118, root:48, bars:[0,9,5,7], lead:'pluck', bass:'sine', steps:16, swing:.18,
     melody:[24,rest,28,31,rest,28,rest,26,24,rest,21,24,rest,19,23,rest], bassline:[0,rest,7,rest,12,rest,7,10,0,rest,12,rest,7,rest,10,12], kick:[0,6,8], snare:[4,12], hats:[2,6,9,14], chord:[0,4,7,14], pad:.55 }
+  ,kitchen: { bpm:106, root:57, bars:[0,2,9,5], lead:'bell', bass:'triangle', steps:16, swing:.13,
+    melody:[28,rest,23,rest,26,28,rest,23,rest,20,23,rest,28,rest,26,rest], bassline:[0,rest,9,rest,0,rest,14,rest,9,rest,0,rest,14,rest,9,rest], kick:[0,5,8,13], snare:[4,12], hats:[2,6,10,14], chord:[0,5,9], pad:.8 }
 };
 const supported = {
   dino:['start','jump','coin','boost','stage','fever','smash','over','revive','toggle'],
-  snow:['chop','furnace','upgrade'], hole:['swallow','grow'], helix:['bounce','drop','smash','hazard','restart'],
+  snow:['chop','furnace','upgrade','hire','care','fire','extinguish','lumberjack'], hole:['swallow','grow'], helix:['bounce','drop','smash','hazard','restart'],
   gates:['gate','battle','shot','impact','victory','fail','restart'], stack:['perfect','cut','miss','restart'],
   golf:['shot','bank','cup','hole'], breaker:['launch','wall','paddle','brick','armor','power','loss','clear','wave','restart'],
   range:['shot','hit','reload','reloaded','warning','block','damage','clear','fail'],
-  pins:['pin','steam','cooled','gem','success','failure'], merge:['drop','merge','success','failure']
+  pins:['pin','steam','cooled','gem','success','failure'], merge:['drop','merge','success','failure'], kitchen:['pickup','chop','cook','serve','burn']
 };
 export class ArcadeAudio {
   constructor({ enabled=false, contextFactory=()=>{const C=globalThis.AudioContext||globalThis.webkitAudioContext;return C?new C():null;} }={}) {
@@ -135,6 +137,10 @@ export class ArcadeAudio {
       if(type==='chop'){n(.045,.22,700);v(175,80,.075,.27,'triangle');}
       if(type==='furnace'){n(.3,.17,500);v(78,165,.27,.18);melody([62,69,74],'bell',.42,.12,.08);}
       if(type==='upgrade')melody([74,78,81,86],'bell',.65,.2,.11);
+      if(type==='hire'||type==='lumberjack')melody([64,69,74],'pluck',.2,.14,.06);
+      if(type==='care')melody([72,76,79],'bell',.2,.11,.06);
+      if(type==='fire'){v(170,90,.24,.19,'sawtooth');n(.16,.2,1200);}
+      if(type==='extinguish'){n(.12,.14,900);melody([78,74,69],'bell',.18,.12,.05);}
     }else if(kind==='hole'){
       if(type==='swallow'){v(280+(data.size||0)*50,48,.2,.32);v(520,95,.14,.12,'triangle',.035);}
       if(type==='grow'){v(95,320,.34,.2,'triangle');melody([65,68,72,77],'pluck',.22,.18,.07);}
@@ -194,6 +200,12 @@ export class ArcadeAudio {
       if(type==='merge'){const tier=Math.max(1,Math.min(6,Number.isFinite(data.tier)?data.tier:1)),base=61+tier*4;v(155+tier*38,500+tier*70,.13,.19,'sine');melody([base,base+7,base+12],'bell',.23,.15,.025);}
       if(type==='success'){v(170,780,.3,.15,'triangle');melody([72,76,79,84,88,91,96],'bell',.32,.17,.055);}
       if(type==='failure'){v(480,75,.36,.2,'sine');melody([72,67,60],'pluck',.24,.12,.09);}
+    }else if(kind==='kitchen'){
+      if(type==='pickup')v(420,760,.08,.15,'triangle');
+      if(type==='chop'){n(.045,.2,900);v(180,95,.055,.16,'triangle');}
+      if(type==='cook'){n(.16,.12,680);melody([67,71,76],'bell',.18,.12,.055);}
+      if(type==='serve')melody([69,74,78,84],'bell',.22,.2,.055);
+      if(type==='burn')v(320,100,.3,.22,'sawtooth');
     }
     return true;
   }

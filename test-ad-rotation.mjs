@@ -14,11 +14,11 @@ for(let seed=1;seed<=30;seed++){
   const storage=memory();let last;
   for(let cycle=0;cycle<30;cycle++){
     const draws=[];
-    for(let n=0;n<10;n++){
+    for(let n=0;n<ids.length;n++){
       const kind=new AdShuffleBag(random,storage).next();assert.notEqual(kind,last);last=kind;draws.push(kind);
-      const saved=JSON.parse(storage.getItem(AD_ROTATION_KEY));assert.equal(saved.version,1);assert.equal(saved.bag.length,9-n);assert(!saved.bag.includes(kind));assert(storage.getItem(AD_ROTATION_KEY).length<300);
+      const saved=JSON.parse(storage.getItem(AD_ROTATION_KEY));assert.equal(saved.version,1);assert.equal(saved.bag.length,ids.length-1-n);assert(!saved.bag.includes(kind));assert(storage.getItem(AD_ROTATION_KEY).length<300);
     }
-    assert.deepEqual(new Set(draws),new Set(ids),'every ten ad openings visit all ten games exactly once');
+    assert.deepEqual(new Set(draws),new Set(ids),'every ad opening cycle visits all games exactly once');
   }
 }
 for(const malformed of ['{', 'null', JSON.stringify({version:0}),JSON.stringify({version:1,pool,bag:['snow','snow'],last:'hole'}),JSON.stringify({version:1,pool,bag:['unknown'],last:'hole'}),JSON.stringify({version:1,pool,bag:['hole'],last:'hole'}),JSON.stringify({version:1,pool:'old-catalog',bag:[],last:'snow'}),JSON.stringify({version:1,pool,bag:ids,last:'unknown'})]){
@@ -51,9 +51,9 @@ const game=new RunnerGame({upgrades:progression.levels,meta:progression.features
 const sandbox={document:doc,window:win,Math,AD_GAMES,AdSession,AdShuffleBag,requestAnimationFrame:()=>{frames.add(++rafId);return rafId},cancelAnimationFrame:id=>frames.delete(id),AdRenderer:class{resize(){}render(){}stop(){}},console};
 vm.createContext(sandbox);vm.runInContext(controller.replace(/^import .*;$/gm,'').replace('export class PlayableAds','globalThis.PlayableAds=class PlayableAds'),sandbox);
 const ads=new sandbox.PlayableAds({progression,availableGames:()=>progression.features.games,onGrowth:()=>{game.setUpgrades(progression.levels);game.setMeta(progression.features)},onRevive:()=>{revives++;assert(game.revive())},onRestart:()=>game.start()});
-const complete={snow:m=>m.delivered=18,hole:m=>m.eaten=24,helix:m=>m.depth=18,gates:m=>m.cleared=1,stack:m=>m.level=12,golf:m=>m.sinking=1,breaker:m=>m.wavePause=1,range:m=>{m.hits=12;m.outcome='success'},pins:m=>{m.saved=12;m.outcome='success'},merge:m=>{m.bestTier=m.targetTier;m.outcome='success'}};
+const complete={snow:m=>m.delivered=18,hole:m=>m.eaten=24,helix:m=>m.depth=18,gates:m=>m.cleared=1,stack:m=>m.level=12,golf:m=>m.sinking=1,breaker:m=>m.wavePause=1,range:m=>{m.hits=12;m.outcome='success'},pins:m=>{m.saved=12;m.outcome='success'},merge:m=>{m.bestTier=m.targetTier;m.outcome='success'},kitchen:m=>{m.delivered=3;m.outcome='success'}};
 const draws=[],missions=[];
-for(let n=0;n<10;n++){
+for(let n=0;n<ids.length;n++){
   game.state='over';assert(game.beginAd());assert(ads.start());assert.equal(frames.size,1);const kind=ads.session.kind,rotation=storage.getItem(AD_ROTATION_KEY);draws.push(kind);missions.push(ads.session.missionId);
   assert(!ads.start());assert(!ads.start('snow'));assert(!ads.finish());assert.equal(storage.getItem(AD_ROTATION_KEY),rotation);
   complete[kind](ads.session.model);ads.paint();assert.equal(ads.session.result.outcome,'success');assert(!elements['ad-result'].hidden);const firstReceipt=ads.session.receipt,rounds=progression.state.rounds,resources=JSON.stringify(progression.state.resources);
@@ -62,7 +62,7 @@ for(let n=0;n<10;n++){
   assert(ads.finish());assert(!ads.finish());assert.equal(frames.size,0);assert.equal(game.state,'running');assert.equal(progression.state.rounds,rounds);assert.equal(JSON.stringify(progression.state.resources),resources,'return does not settle twice');assert.equal(storage.getItem(AD_ROTATION_KEY),rotation);
   assert.deepEqual(progression.features.games,['snow','hole','helix']);assert.equal(JSON.stringify(progression.prestige.snapshot()),initialPrestige);
 }
-assert.deepEqual(new Set(draws),new Set(ids));assert.deepEqual(new Set(missions),new Set(ids),'mission rewards also rotate independently across all ten');assert.equal(revives,10);
+assert.deepEqual(new Set(draws),new Set(ids));assert.deepEqual(new Set(missions),new Set(ids),'mission rewards also rotate independently across all games');assert.equal(revives,ids.length);
 // Direct LAB launches reject locked/unknown choices, and never disturb ad rotation.
 const afterAds=storage.getItem(AD_ROTATION_KEY),missionBefore=storage.getItem('dino-overdrive-mission-rotation');assert(!ads.start('range'));assert(!ads.start('unknown'));assert(!ads.start(null));assert.equal(storage.getItem(AD_ROTATION_KEY),afterAds);assert(ads.start('snow'));assert.equal(ads.session.missionId,'snow');assert(ids.includes(ads.session.kind),'LAB mission selection still uses the creative pool');ads.stop();assert.notEqual(storage.getItem(AD_ROTATION_KEY),afterAds);assert.equal(storage.getItem('dino-overdrive-mission-rotation'),missionBefore);
 const reloaded=new Progression(storage);assert.deepEqual(reloaded.features.games,['snow','hole','helix']);for(const flag of ['passive','hyper','exponent','tower','autoBlaster'])assert.equal(reloaded.features[flag],false);assert.equal(JSON.stringify(reloaded.prestige.snapshot()),initialPrestige);assert(reloaded.level('range')>0);

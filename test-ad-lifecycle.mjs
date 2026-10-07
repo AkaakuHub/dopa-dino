@@ -38,7 +38,7 @@ for(let cycle=1;cycle<=12;cycle++){
   assert(!elements['ad-screen'].hidden);assert(arcade.inert);assert(doc.body.classes.has('ad-open'));
   assert(elements['ad-screen'].classes.has('ad-enter'));
   assert.equal(elements['ad-screen'].classAdds.filter(s=>s==='ad-enter').length,cycle);
-  assert.notEqual(ads.session.kind,lastKind);lastKind=ads.session.kind;if(cycle<=10)firstCycle.push(lastKind);
+  assert.notEqual(ads.session.kind,lastKind);lastKind=ads.session.kind;if(cycle<=AD_GAMES.length)firstCycle.push(lastKind);
   assert.equal(ads.session.elapsed,0);assert(elements['ad-skip'].disabled);assert(!ads.finish());
   tick(16);tick(4990);assert(ads.session.elapsed<5);assert(!ads.finish());
   const elapsed=ads.session.elapsed;
@@ -57,7 +57,7 @@ for(let cycle=1;cycle<=12;cycle++){
   assert(elements['ad-screen'].hidden);assert(!elements['ad-screen'].classes.has('ad-enter'));assert(!arcade.inert);assert(!doc.body.classes.has('ad-open'));
   game.obstacles=[{x:108,y:game.ground-52,w:34,h:47}];game.update(.001);assert.equal(game.state,'running','each revive shield blocks another immediate death');
 }
-assert.equal(new Set(firstCycle).size,10,'first ten rewarded ads include every game even with only three LAB games available');
+assert.equal(new Set(firstCycle).size,AD_GAMES.length,'first rotation covers every available game even with only three LAB games available');
 game.state='over';assert(game.beginAd());assert(ads.start());elements['ad-restart'].dispatch('click');assert.equal(restarts,1);assert.equal(game.state,'running');assert.equal(game.score,0);assert.equal(game.revivesUsed,0);assert.equal(frames.size,0);assert(!ads.active);
 const css=readFileSync('./dist/style.css','utf8'),html=readFileSync('./dist/index.html','utf8');
 assert.match(css,/\.ad-screen\.ad-enter\{animation:ad-slide-up \.4s cubic-bezier\(\.16,1,\.3,1\) both\}/);

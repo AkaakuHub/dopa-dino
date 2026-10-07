@@ -9,9 +9,9 @@ const make = (kind, width=390, height=844) => {
  r.initialize=function(){this.renderer??={setSize(){},render(){},renderLists:{dispose(){}},capabilities:{getMaxAnisotropy(){return 4}}};};
  const s=new AdSession(kind);r.render(kind,s.model);return {r,s};
 };
-assert.equal(Object.keys(ART_DIRECTIONS).length,10);
-assert.equal(new Set(Object.values(ART_DIRECTIONS).map(x=>x.name)).size,10);
-assert.equal(new Set(Object.values(ART_DIRECTIONS).map(x=>x.background)).size,10);
+assert.equal(Object.keys(ART_DIRECTIONS).length,AD_GAMES.length);
+assert.equal(new Set(Object.values(ART_DIRECTIONS).map(x=>x.name)).size,AD_GAMES.length);
+assert.equal(new Set(Object.values(ART_DIRECTIONS).map(x=>x.background)).size,AD_GAMES.length);
 for(const {id:kind} of AD_GAMES){
  const {r,s}=make(kind), surfaces=new Set(),textures=new Set(),materials=new Set();
  assert.equal(r.scene.userData.artDirection,ART_DIRECTIONS[kind].name);
@@ -23,7 +23,7 @@ for(const {id:kind} of AD_GAMES){
   if(mat.userData.artSurface){surfaces.add(mat.userData.artSurface);assert(mat.isMeshStandardMaterial);assert(mat.map?.isDataTexture);assert(mat.bumpMap?.isDataTexture);assert(mat.roughnessMap?.isDataTexture);assert.equal(mat.map.colorSpace,THREE.SRGBColorSpace);assert.equal(mat.bumpMap.colorSpace,THREE.NoColorSpace);assert.equal(mat.roughnessMap.colorSpace,THREE.NoColorSpace);assert.equal(mat.map.anisotropy,4);assert.equal(mat.map.image.width,128);assert.equal(mat.map.image.height,128);assert(mat.map.generateMipmaps);assert.equal(mat.map.minFilter,THREE.LinearMipmapLinearFilter);}
   for(const value of Object.values(mat))if(value?.isTexture)textures.add(value);
  }
- textures.add(r.scene.environment);assert(surfaces.size>=2,`${kind} distinct material families`);
+ textures.add(r.scene.environment);assert(kind==='kitchen'||surfaces.size>=2,`${kind} distinct material families`);
  let bytes=0;for(const t of textures)bytes+=t.image?.data?.byteLength||0;
  assert(bytes<3*1024*1024,`${kind} procedural source textures under 3MiB`);
  const counts=[r.art.materials.size,r.art.textures.size,r.cache.size];

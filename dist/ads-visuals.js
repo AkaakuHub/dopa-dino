@@ -23,7 +23,8 @@ export const ART_DIRECTIONS = Object.freeze({
   breaker: { name: 'Breaker / brass and enamel arcade instrument', background: 0x222d3d, sky: 0xafc0c6, ground: 0x1d252e, key: 0xffd49a, fill: 0x6a9cb5, keyPower: 3.0, ambient: .7, exposure: 1.08, environment: .8 },
   range: { name: 'Range / weathered orbital training hangar', background: 0x0b1724, sky: 0xb1c7d2, ground: 0x1a2936, key: 0xd7eafa, fill: 0xf5bc7d, keyPower: 2.7, ambient: .72, exposure: 1.05, environment: .64 },
   pins: { name: 'Pins / sandstone water temple', background: 0x343d3d, sky: 0xe3dcc6, ground: 0x3f493f, key: 0xffe1ad, fill: 0x88b6ac, keyPower: 3, ambient: .86, exposure: 1.05, environment: .5 },
-  merge: { name: 'Merge / porcelain patisserie cabinet', background: 0xd5c9bd, sky: 0xfff3e1, ground: 0x877b79, key: 0xffe6cb, fill: 0xbac8bf, keyPower: 2.5, ambient: 1.1, exposure: 1.04, environment: .8 }
+  merge: { name: 'Merge / porcelain patisserie cabinet', background: 0xd5c9bd, sky: 0xfff3e1, ground: 0x877b79, key: 0xffe6cb, fill: 0xbac8bf, keyPower: 2.5, ambient: 1.1, exposure: 1.04, environment: .8 },
+  kitchen: { name: 'North Camp Kitchen / lantern-lit service cabin', background: 0x23384b, sky: 0xbfd5e1, ground: 0x536678, key: 0xffe2b0, fill: 0x83b8d0, keyPower: 3, ambient: 1.05, exposure: 1.04, environment: .56 }
 });
 const profiles = {
   snow: [.95, 0, .038], wood: [.85, 0, .06], stone: [.92, 0, .075], asphalt: [.95, 0, .05],
