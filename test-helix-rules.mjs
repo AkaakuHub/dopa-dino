@@ -18,8 +18,8 @@ m=new HelixTower();m.rings=[{gap:3,gapWidth:1.4,red:4.8}];m.streak=2;m.ball=-.00
 m=new HelixTower();setRings(m,'solid');m.velocity=22;m.ball=-.02;m.update(.05);assert.equal(m.floor,0);assert(m.dead);assert.equal(m.hits,1);
 // Coarse and fine display frames agree on continuously aligned falling position.
 const a=new HelixTower(),b=new HelixTower();for(const q of [a,b]){setRings(q,'gap');q.velocity=1;q.ball=-.3;}step(a,1,.05);step(b,1,1/120);assert.equal(a.floor,b.floor);assert(Math.abs((a.floor+a.ball)-(b.floor+b.ball))<1e-8);assert(Math.abs(a.velocity-b.velocity)<1e-8);
-// Death/retry never resets or closes the five-second ad session.
-const ad=new AdSession('helix');ad.elapsed=5.2;setRings(ad.model,'solid');ad.model.ball=0;ad.model.velocity=1;ad.update(.01);step(ad,2);assert(ad.ready);assert(!ad.closed);assert(ad.model.attempt>=2);
+// Death freezes an explicit failure result without resetting or closing the five-second session.
+const ad=new AdSession('helix');ad.elapsed=5.2;setRings(ad.model,'solid');ad.model.ball=0;ad.model.velocity=1;ad.update(.01);step(ad,2);assert(ad.ready);assert(!ad.closed);assert.equal(ad.model.attempt,1);assert.equal(ad.result.outcome,'failure');const frozen=ad.model.time;ad.update(.05);assert.equal(ad.model.time,frozen);
 // Seeded bags visit all seven exactly once, including no repeats across every boundary.
 const counts=Object.fromEntries(AD_GAMES.map(g=>[g.id,0]));
 for(let seed=1;seed<=300;seed++){let state=Math.imul(seed,0x9e3779b9)>>>0;const random=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return state/4294967296;};const bag=new AdShuffleBag(random);let last=null;for(let round=0;round<100;round++){const three=AD_GAMES.map(()=>bag.next());assert.equal(new Set(three).size,AD_GAMES.length);for(const k of three){assert.notEqual(k,last);last=k;}if(round===0)counts[three[0]]++;}}

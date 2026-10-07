@@ -11,11 +11,23 @@ export class AdShuffleBag {
   constructor(random=Math.random){this.random=random;this.bag=[];this.last=null;}
   next(){if(!this.bag.length){this.bag=AD_GAMES.map(g=>g.id);for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}if(this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}}this.last=this.bag.shift();return this.last;}
 }
+export const ROUND_RULES={
+  snow:{limit:75,goal:18,label:'薪を18本届ける',value:m=>m.delivered,win:m=>m.delivered>=18},
+  hole:{limit:60,goal:24,label:'街の物を24個吸い込む',value:m=>m.eaten,win:m=>m.eaten>=24},
+  helix:{limit:90,goal:18,label:'18段降りる',value:m=>m.depth,win:m=>m.depth>=18,fail:m=>m.dead>0},
+  gates:{limit:90,goal:1,label:'ボスを倒す',value:m=>m.cleared||Math.min(.9,m.distance/65),win:m=>m.cleared>0,fail:m=>m.dead>0},
+  stack:{limit:90,goal:12,label:'12段積む',value:m=>m.level,win:m=>m.level>=12,fail:m=>m.dead>0},
+  golf:{limit:120,goal:1,label:'10打以内にカップへ',value:m=>m.sinking?1:m.strokes?Math.max(0,.8*(1-Math.hypot(m.ball.x-m.cup.x,m.ball.z-m.cup.z)/8)):0,win:m=>m.sinking>0,fail:m=>m.strokes>=10&&m.canShoot},
+  breaker:{limit:150,goal:28,label:'ブロックを全て壊す',value:m=>m.destroyed,win:m=>m.wavePause>0||m.wave>1,fail:m=>m.dead>0}
+};
 export class AdSession {
-  constructor(kind){this.kind=kind;this.elapsed=0;this.closed=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model();}
+  constructor(kind,{round=1,receipt=''}={}){this.kind=kind;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model({round});this.rule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};}
   get ready(){return this.elapsed>=5&&!this.closed;}
   get remaining(){return Math.max(0,Math.ceil(5-this.elapsed));}
-  update(dt,active=true){if(this.closed||!active)return;this.elapsed+=Math.max(0,dt);this.model.update(Math.min(Math.max(dt,0),.05));}
+  get progress(){return Math.min(1,Math.max(0,this.rule.value(this.model)/this.rule.goal));}
+  get seconds(){return Math.max(0,Math.ceil(this.rule.limit-this.roundTime));}
+  checkResult(){if(this.result||this.closed)return this.result;const outcome=this.rule.win(this.model)?'success':this.rule.fail?.(this.model)||this.model.outcome==='failure'||this.roundTime>=this.rule.limit?'failure':null;if(outcome){this.model.keys.clear();this.model.pointerCancel?.();this.result={outcome,progress:this.progress,seconds:this.roundTime,metric:this.model.resultMetric||`${Math.floor(this.rule.value(this.model))} / ${this.rule.goal}`,receipt:this.receipt};}return this.result;}
+  update(dt,active=true){if(this.closed||!active)return;dt=Number.isFinite(dt)?Math.max(0,dt):0;this.elapsed+=dt;if(this.result)return;const step=Math.min(dt,.05);this.roundTime+=step;this.model.update(step);this.checkResult();}
   close(){if(!this.ready)return false;this.closed=true;return true;}
 }
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
