@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import {RunnerGame} from './dist/engine.js';
+const events=[];const g=new RunnerGame({random:()=>.5,onEvent:e=>events.push(e.type)});const step=(s)=>{for(let t=0;t<s;t+=1/120)g.update(1/120);};
+assert.equal(g.state,'ready');g.start();assert.equal(g.state,'running');assert(g.jump());step(.08);assert(g.dino.y<g.ground);assert(g.jump());assert(!g.jump());step(1.2);assert.equal(g.dino.y,g.ground);assert.equal(g.dino.jumps,0);
+g.duck(true);assert.equal(g.box.h,24);g.duck(false);assert.equal(g.box.h,47);g.pause();const t=g.elapsed,score=g.score;step(10);assert.equal(g.elapsed,t);assert.equal(g.score,score);g.resume();step(.05);assert(g.elapsed>t);
+g.start();g.obstacles=[{type:'cactus',x:110,y:g.ground-45,w:30,h:45}];step(.01);assert.equal(g.state,'over');g.start();assert.equal(g.obstacles.length,0);assert.equal(g.score,0);
+for(let i=0;i<8;i++)g.collect({x:120,y:g.ground-30});assert.equal(g.fever,6);assert.equal(g.coins,8);assert.equal(g.combo,8);g.obstacles=[{type:'cactus',x:110,y:g.ground-45,w:30,h:45}];step(.01);assert.equal(g.state,'running');assert.equal(g.obstacles.length,0);assert(events.includes('smash'));g.spawnTime=100;step(6.1);assert.equal(g.fever,0);assert.equal(g.combo,0);
+g.start();g.duck(true);g.obstacles=[{type:'bird',x:110,y:g.ground-64,w:46,h:30}];step(.01);assert.equal(g.state,'running');g.duck(false);step(.01);assert.equal(g.state,'over');g.title();assert.equal(g.state,'ready');assert.equal(g.dino.duck,false);
+for(const width of [600,1000]){const x=new RunnerGame({width,height:500,random:()=>.5});x.start();for(let i=0;i<60*25;i++){const o=x.obstacles[0];if(o&&o.x-x.dino.x<x.speed*.4&&o.x>x.dino.x&&x.dino.jumps===0)x.jump();x.update(1/60);if(x.state==='over')break;}assert(x.elapsed>10,'a basic jumping strategy should be playable');}
+console.log('PASS: jump, double jump cap, landing, duck, pause/resume, collision, retry/reset, coin combo, fever activation/expiry/invincibility, bird duck, title, desktop/mobile playable progression');

@@ -1,0 +1,13 @@
+# Local hosting metadata is not part of the standalone Cloudflare project.
+.openai/
+
+# Local tools and credentials.
+node_modules/
+.cloudflare/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
