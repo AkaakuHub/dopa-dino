@@ -1,11 +1,17 @@
 // A bounded, renderer-independent first-person training range. No people or gore.
+import { inflationForRound } from './ad-inflation.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const safeDt = n => Number.isFinite(n) ? clamp(n, 0, .05) : 0;
 export const RANGE_RULES = Object.freeze({ goal: 12, shields: 3, magazine: 6, seconds: 45, reload: 1.1, shotDelay: .24, targets: 3, events: 24, traces: 6, pulses: 6 });
 export const GAME_META = [{ id: 'range', name: 'NEON RANGE', hint: '押して照準・連射 · 離すとカバー＆リロード · ドローン12機', keys: '矢印 / WASD 照準 · SPACE 射撃 · ENTER リロード', accent: '#67f5df' }];
 
 export class NeonRange {
-  constructor() {
+  constructor(round = 1) {
+    this.round = Math.max(1, Math.floor(Number.isFinite(round) ? round : 1));
+    this.inflation = inflationForRound(this.round);
+    this.goal = RANGE_RULES.goal + Math.min(8, Math.floor(this.inflation.step / 2));
+    this.shotDelay = RANGE_RULES.shotDelay * Math.min(1.55, this.inflation.difficulty);
+    this.targetRadius = Math.max(.56, .8 - this.inflation.step * .018);
     this.keys = new Set(); this.time = 0; this.events = []; this.eventId = 0;
     this.outcome = null; this.resultMetric = ''; this.failureReason = '';
     this.hits = 0; this.shotsFired = 0; this.score = 0; this.combo = 0;
@@ -19,14 +25,14 @@ export class NeonRange {
     this.traces = []; this.pulses = []; this.serial = 0;
     this.targets = Array.from({ length: RANGE_RULES.targets }, (_, slot) => ({
       slot, generation: 0, active: true, x: (slot - 1) * 2.8, y: 2.35 + slot * .35,
-      z: -7 - slot * 1.7, radius: .8, cooldown: 3.8 + slot * 1.05,
+      z: -7 - slot * 1.7, radius: this.targetRadius, cooldown: 3.8 + slot * 1.05,
       respawn: 0, charge: 0, hit: 0
     }));
   }
   get eyeX() { return this.player.x; }
   get eyeY() { return 2.3 - this.coverBlend * .85; }
   get accuracy() { return this.shotsFired ? Math.round(this.hits / this.shotsFired * 100) : 0; }
-  get stats() { return [['TARGETS', `${this.hits}/${RANGE_RULES.goal}`], ['CELLS', this.reload ? 'RELOAD' : `${this.ammo}/${RANGE_RULES.magazine}`], ['SHIELD', `${'◆'.repeat(this.shields)} · ${Math.ceil(this.remaining)}s`]]; }
+  get stats() { return [['TARGETS', `${this.hits}/${this.goal}`], ['CELLS', this.reload ? 'RELOAD' : `${this.ammo}/${RANGE_RULES.magazine}`], ['SHIELD', `${'◆'.repeat(this.shields)} · ${Math.ceil(this.remaining)}s`]]; }
   setViewport(width, height) {
     // Viewport state is only updated while a round is live. Finished rounds stay frozen.
     if (this.outcome || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
@@ -84,7 +90,7 @@ export class NeonRange {
   shoot() {
     if (this.outcome || this.covered || this.reload > 0 || this.cooldown > .000001) return false;
     if (!this.ammo) { this.beginReload(); return false; }
-    this.ammo--; this.shotsFired++; this.cooldown = RANGE_RULES.shotDelay; this.recoil = 1;
+    this.ammo--; this.shotsFired++; this.cooldown = this.shotDelay; this.recoil = 1;
     const ray = this.ray(); let nearest = 80, target = null;
     for (const candidate of this.targets) {
       if (!candidate.active) continue;
@@ -104,8 +110,8 @@ export class NeonRange {
       target.active = false; target.respawn = .75; target.hit = .55; target.charge = 0;
       this.hits++; this.combo++; this.score += 100 + Math.min(this.combo, 10) * 10; this.pop = .45;
       this.emit('hit', { x: target.x, y: target.y, z: target.z, slot: target.slot, hits: this.hits });
-      this.say(`${this.hits} / ${RANGE_RULES.goal} TARGETS`);
-      if (this.hits >= RANGE_RULES.goal) { this.finish('success'); return true; }
+      this.say(`${this.hits} / ${this.goal} TARGETS`);
+      if (this.hits >= this.goal) { this.finish('success'); return true; }
     } else { this.combo = 0; }
     if (!this.ammo) this.beginReload();
     return true;
@@ -113,7 +119,7 @@ export class NeonRange {
   finish(outcome, reason = '') {
     if (this.outcome || !['success', 'failure'].includes(outcome)) return;
     this.failureReason = reason;
-    this.resultMetric = `${this.hits}/${RANGE_RULES.goal} TARGETS · ${outcome === 'success' ? this.accuracy + '% ACCURACY' : reason}`;
+    this.resultMetric = `${this.hits}/${this.goal} TARGETS · ${outcome === 'success' ? this.accuracy + '% ACCURACY' : reason}`;
     this.message = outcome === 'success' ? 'RANGE CLEAR!' : reason;
     this.pointerHeld = false; this.keys.clear(); this.covered = true;
     this.emit(outcome === 'success' ? 'clear' : 'fail', { hits: this.hits, score: this.score, reason });
@@ -143,18 +149,18 @@ export class NeonRange {
         target.respawn = Math.max(0, target.respawn - dt);
         if (!target.respawn) {
           target.active = true; target.generation++;
-          target.cooldown = 3.25 + (target.slot + target.generation) % 3 * .5;
+          target.cooldown = Math.max(1.45, (3.25 + (target.slot + target.generation) % 3 * .5) / this.inflation.speed);
         } else continue;
       }
       const phase = this.time * (.68 + target.slot * .13) + target.slot * 2.3 + target.generation * .8;
       target.x = (target.slot - 1) * 2.8 + Math.sin(phase) * .6;
       target.y = 2.45 + target.slot * .3 + Math.cos(phase * 1.3) * .3;
       target.z = -7 - target.slot * 1.7 + Math.sin(phase * .7) * .45;
-      target.cooldown = Math.max(0, target.cooldown - dt);
+      target.cooldown = Math.max(0, target.cooldown - dt * this.inflation.speed);
       target.charge = clamp(1 - target.cooldown / 1.15, 0, 1);
       if (!target.cooldown) {
         if (this.pulses.length < RANGE_RULES.pulses) this.pulses.push({ id: ++this.serial, age: 0, duration: .9, x: target.x, y: target.y, z: target.z, toX: this.eyeX, toY: this.eyeY });
-        this.emit('warning', { slot: target.slot }); target.cooldown = 3.25; target.charge = 0;
+        this.emit('warning', { slot: target.slot }); target.cooldown = Math.max(1.45, 3.25 / this.inflation.speed); target.charge = 0;
       }
     }
     // Resolve visible enemy energy pulses. Cover always blocks; one impact cannot remove multiple shields.
@@ -178,7 +184,7 @@ export class NeonRange {
     return finite([this.time, this.remaining, this.ammo, this.reload, this.shields, this.hits, this.aim.x, this.aim.y, this.aspect, this.tanHalfFov, this.coverBlend, this.score, this.eyeX, this.eyeY])
       && this.time >= 0 && this.remaining >= 0 && this.remaining <= RANGE_RULES.seconds
       && this.ammo >= 0 && this.ammo <= RANGE_RULES.magazine && this.shields >= 0 && this.shields <= RANGE_RULES.shields
-      && this.hits >= 0 && this.hits <= RANGE_RULES.goal && Math.abs(this.aim.x) <= .98 && Math.abs(this.aim.y) <= .94
+      && this.hits >= 0 && this.hits <= this.goal && Math.abs(this.aim.x) <= .98 && Math.abs(this.aim.y) <= .94
       && Math.abs(this.eyeX) <= .32 && this.coverBlend >= 0 && this.coverBlend <= 1 && this.targets.length === RANGE_RULES.targets
       && this.events.length <= RANGE_RULES.events && this.traces.length <= RANGE_RULES.traces && this.pulses.length <= RANGE_RULES.pulses
       && this.targets.every(t => finite([t.x, t.y, t.z, t.cooldown, t.respawn, t.charge, t.hit]) && Math.abs(t.x) <= 3.4 && t.y > 1 && t.y < 4 && t.z > -12 && t.z < -6)

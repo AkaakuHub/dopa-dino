@@ -1,4 +1,5 @@
 // Two endless, self-contained playable models. Rendering is deliberately separate.
+import { inflationForRound } from './ad-inflation.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const safeDt = dt => Number.isFinite(dt) ? clamp(dt, 0, .05) : 0;
 const sideOf = x => x < 0 ? 0 : 1;
@@ -9,7 +10,9 @@ export const GAME_META = [
 ];
 
 export class GateCrowd {
-  constructor() {
+  constructor(round = 1) {
+    this.roundSeed = Math.max(1, Math.floor(Number.isFinite(round) ? round : 1));
+    this.inflation = inflationForRound(this.roundSeed);
     this.time = 0;
     this.keys = new Set();
     this.attempt = 1;
@@ -34,7 +37,7 @@ export class GateCrowd {
     this.rows = this.makeRows();
   }
   makeRows() {
-    const n = this.round;
+    const n = this.round + this.inflation.step;
     // The useful choice changes with squad size. Multiplication is not always best.
     const pairs = [
       [{ op: '+', value: 18 + n * 2 }, { op: '×', value: 2 }],
@@ -138,7 +141,7 @@ export class GateCrowd {
       }
       return;
     }
-    const speed = 4.25 + Math.min(1.8, this.round * .12);
+    const speed = (4.25 + Math.min(1.8, this.round * .12)) * this.inflation.speed;
     this.distance += speed * dt;
     for (const row of this.rows) {
       row.z += speed * dt;
@@ -177,7 +180,9 @@ export class GateCrowd {
 }
 
 export class SkyStack {
-  constructor() {
+  constructor(round = 1) {
+    this.roundSeed = Math.max(1, Math.floor(Number.isFinite(round) ? round : 1));
+    this.inflation = inflationForRound(this.roundSeed);
     this.time = 0;
     this.keys = new Set();
     this.attempt = 1;
@@ -219,7 +224,7 @@ export class SkyStack {
     if (this.dead || this.lock > 0) return false;
     const a = this.active, b = this.top, axis = a.axis, dim = axis === 'x' ? 'w' : 'd';
     const delta = a[axis] - b[axis], size = b[dim], error = Math.abs(delta);
-    const tolerance = Math.max(.025, Math.min(.095, size * .1));
+    const tolerance = Math.max(.025, Math.min(.095, size * .1 / this.inflation.difficulty));
     if (error >= size - .00001) {
       this.addOffcut({ x: a.x, z: a.z, w: a.w, d: a.d, level: a.level }, Math.sign(delta) || 1);
       this.dead = 1.35;
@@ -273,7 +278,7 @@ export class SkyStack {
     }
     const a = this.active;
     // Triangular motion has a constant speed at the alignment point.
-    a.offset += a.direction * dt * (2.55 + Math.min(4.5, this.level * .075));
+    a.offset += a.direction * dt * (2.55 + Math.min(4.5, this.level * .075)) * this.inflation.speed;
     if (a.offset > 4.7) { a.offset = 9.4 - a.offset; a.direction = -1; }
     if (a.offset < -4.7) { a.offset = -9.4 - a.offset; a.direction = 1; }
     a[a.axis] = this.top[a.axis] + a.offset;

@@ -1,4 +1,5 @@
 // Finite, renderer-independent arcade rounds. Construct a new model to replay.
+import { inflationForRound } from './ad-inflation.js';
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 const safeDt = dt => Number.isFinite(dt) ? clamp(dt, 0, .05) : 0;
 const validRound = round => Math.max(1, Math.floor(Number.isFinite(round) ? round : 1));
@@ -19,7 +20,7 @@ export const PIN_LAYOUTS = Object.freeze([
 
 export class TreasurePins {
   constructor(round = 1) {
-    this.round = validRound(round); this.layout = PIN_LAYOUTS[(this.round - 1) % PIN_LAYOUTS.length];
+    this.round = validRound(round); this.inflation = inflationForRound(this.round); this.layout = PIN_LAYOUTS[(this.round - 1) % PIN_LAYOUTS.length];
     this.keys = new Set(); this.time = 0; this.events = []; this.eventId = 0;
     this.outcome = null; this.resultMetric = ''; this.score = 0; this.pop = 0;
     this.message = 'WATER → COOL → TREASURE'; this.messageTime = 4;
@@ -99,7 +100,7 @@ export class TreasurePins {
       for (const p of this.particles) {
         if (!p.active || this.outcome) continue;
         const oldY = p.y;
-        p.vy = Math.max(-13, p.vy - 13 * h); p.x += p.vx * h; p.y += p.vy * h; p.spin += p.vx * h * 2;
+          p.vy = Math.max(-13 * this.inflation.speed, p.vy - 13 * this.inflation.speed * h); p.x += p.vx * h; p.y += p.vy * h; p.spin += p.vx * h * 2;
         if (p.x < this.bounds.left + p.r) { p.x = this.bounds.left + p.r; p.vx = Math.abs(p.vx) * .35; }
         if (p.x > this.bounds.right - p.r) { p.x = this.bounds.right - p.r; p.vx = -Math.abs(p.vx) * .35; }
         if (p.y + p.r > this.divider.bottom && p.y - p.r < this.divider.top && Math.abs(p.x - this.divider.x) < p.r + .1) {
@@ -113,7 +114,11 @@ export class TreasurePins {
         // Water mixes into the whole connected lava basin, rather than only one
         // side cooling. Absorbed droplets are retired from a fixed-size pool.
         if (p.type === 'water' && p.y - p.r <= this.poolSurface && p.y > this.layout.basinY - .15 && this.heat > 0 && closedDrain) {
-          p.active = false; this.waterUsed++; this.heat = Math.max(0, this.heat - 1 / 19);
+          p.active = false; this.waterUsed++; // Keep one bounded water reservoir solvable at every round.
+          // The chamber always has a fixed 19-droplet cooling recipe; gravity
+          // and pin layouts carry round inflation while this objective stays
+          // physically solvable at every bounded round.
+          this.heat = Math.max(0, this.heat - 1 / 19);
           this.emit('steam', { x: p.x, y: this.poolSurface });
           if (this.heat < 1e-8) { this.heat = 0; this.pop = .6; this.say('COOLED! RELEASE THE TREASURE', 3); this.emit('cooled', { x: 0, y: this.poolSurface }); }
           continue;
@@ -163,12 +168,12 @@ function separate(a, b, bounce = .08) {
 
 export class OrbitMerge {
   constructor(round = 1) {
-    this.round = validRound(round); this.time = 0; this.keys = new Set(); this.events = []; this.eventId = 0;
+    this.round = validRound(round); this.inflation = inflationForRound(this.round); this.time = 0; this.keys = new Set(); this.events = []; this.eventId = 0;
     this.outcome = null; this.resultMetric = ''; this.message = 'MATCH NUMBERS · MAKE 32'; this.messageTime = 3;
     this.bounds = { left: -3.05, right: 3.05, floor: .7, danger: 7.65, spawn: 9.05 };
     this.targetTier = this.round % 4 === 0 ? 6 : 5; this.message = `MATCH NUMBERS · MAKE ${MERGE_TIERS[this.targetTier - 1].value}`;
     this.pieces = []; this.nextId = 0; this.drops = 0; this.merges = 0; this.score = 0; this.bestTier = 1;
-    this.aim = 0; this.dragging = false; this.cooldown = 0; this.dangerTime = 0; this.pop = 0; this.maxPieces = 42;
+    this.aim = 0; this.dragging = false; this.cooldown = 0; this.dangerTime = 0; this.pop = 0; this.maxPieces = 42; this.gravity = 15 * this.inflation.speed;
     this.sequence = DROP_SEQUENCES[(this.round - 1) % DROP_SEQUENCES.length]; this.nextTier = this.sequence[0];
   }
   emit(type, data = {}) { this.events.push({ id: ++this.eventId, type, time: this.time, ...data }); if (this.events.length > 24) this.events.shift(); }
@@ -224,7 +229,7 @@ export class OrbitMerge {
     if (steer) this.point(this.aim + steer * dt * 5);
     for (let remain = dt; remain > 1e-8 && !this.outcome;) {
       const h = Math.min(remain, 1 / 180); remain -= h;
-      for (const p of this.pieces) { p.vy = Math.max(-15, p.vy - 15 * h); p.vx *= Math.exp(-h * .38); p.x += p.vx * h; p.y += p.vy * h; p.rotation -= p.vx * h / p.r; this.wall(p); }
+      for (const p of this.pieces) { p.vy = Math.max(-this.gravity, p.vy - this.gravity * h); p.vx *= Math.exp(-h * .38 * this.inflation.difficulty); p.x += p.vx * h; p.y += p.vy * h; p.rotation -= p.vx * h / p.r; this.wall(p); }
       // Resolve several passes for stable piles, merge at most one pair each
       // substep so IDs cannot be consumed twice during a cascade.
       let merged = false;

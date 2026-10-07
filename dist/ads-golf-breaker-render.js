@@ -4,7 +4,7 @@ import {surface,roundedBox} from './ads-visuals.js';
 const TAU=Math.PI*2;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const brickColors=[0x4d9b9a,0xd4b465,0xd47751,0xc5d5c5,0x697faa];
-const powerColors={wide:0x71edff,fire:0xffa36d,slow:0xc3a0ff};
+const powerColors={wide:0x71edff,fire:0xffa36d,slow:0xc3a0ff,multi:0xffe47a};
 const noShadow=o=>{o.castShadow=false;return o;};
 function pooledMesh(r,geometry,material,parent=r.scene){return r.mesh(geometry,material,parent);}
 function pools(r,n,geometry,material,parent=r.scene){return Array.from({length:n},()=>{const q=pooledMesh(r,geometry,material,parent);q.visible=false;return q;});}
@@ -137,6 +137,9 @@ function buildBreaker(r,m){
   for(let i=0;i<42;i++){const q=r.group();const base=r.mesh(baseGeo,shadowMaterial,q);base.position.y=.115;const body=r.mesh(bodyGeo,brickMats[i%5],q);body.position.y=.37;const cap=r.mesh(capGeo,trimMats[i%5],q);cap.position.set(0,.613,-.159);const inset=r.mesh(insetGeo,legendMaterial,q);inset.position.set(0,.609,.045);const armor=r.mesh(armorGeo,armorMaterial,q);armor.position.set(0,.642,0);q.visible=false;g.bricks.push({group:q,body,cap,armor,inset});}
   g.brickMats=brickMats;g.trimMats=trimMats;
   g.ball=r.sphere(r.scene,0,.29,0,.165,surface(r,'metal',0xf8fbeb,{metalness:.58,roughness:.19,emissive:0x8aa49b,emissiveIntensity:.2,bumpScale:.008}));g.ballRing=r.ring(r.scene,0,.055,0,.25,.012,0xa4cdbf);g.ballRing.castShadow=false;g.ballHalo=r.sphere(r.scene,0,.29,0,.23,glowMat(r,0xaccfc1,.45,.065));g.ballHalo.castShadow=false;
+  // Two recycled companion balls make the multiball power-up visible while
+  // keeping the scene graph strictly bounded.
+  g.extraBalls=[0,1].map(()=>r.sphere(r.scene,0,.29,0,.145,glowMat(r,0xffe47a,.38)));
   g.trail=pools(r,16,new THREE.SphereGeometry(.12,9,6),glowMat(r,0x8bd6c9,.45,.25));g.trail.forEach(q=>q.castShadow=false);
   g.pickups=[];const diamond=new THREE.OctahedronGeometry(.25,0);for(let i=0;i<6;i++){const q=r.group();const body=pooledMesh(r,diamond,new THREE.MeshStandardMaterial({color:powerColors.wide,emissive:powerColors.wide,emissiveIntensity:.65,metalness:.2,roughness:.4}),q);const line=r.ring(q,0,0,0,.35,.018,0xe2f8ff);line.rotation.x=.8;const shadow=r.mesh(new THREE.CircleGeometry(.24,12),r.mat(0x3d8cad,{transparent:true,opacity:.25,depthWrite:false}));shadow.rotation.x=-Math.PI/2;shadow.castShadow=false;q.visible=false;shadow.visible=false;g.pickups.push({group:q,body,line,shadow});}
   g.burst=makeBurst(r,brickColors,56);
@@ -148,7 +151,8 @@ function buildBreaker(r,m){
 }
 function updateBreaker(r,m){const g=r.breaker,t=r.lowMotion?0:m.time;g.paddle.position.set(m.paddle.x,0,m.paddle.z);g.paddleCore.scale.x=m.paddle.w;g.paddleTop.scale.x=m.paddle.w;g.paddleGlow.scale.x=m.paddle.w;g.paddleEnds.forEach((q,i)=>q.position.x=(i?1:-1)*m.paddle.w*.48);
   g.bricks.forEach((q,i)=>{const b=m.bricks[i];q.group.visible=!!b&&b.hp>0;if(!q.group.visible)return;q.group.position.set(b.x,b.hit*.35,b.z);q.group.scale.set(1+b.hit*.22,1-b.hit*.7,1+b.hit*.22);q.body.material=g.brickMats[b.color];q.cap.material=g.trimMats[b.color];q.armor.visible=b.hp>1;q.inset.visible=b.maxHp===1||b.hp>1;});
-  g.ball.visible=!m.dead&&!m.wavePause;g.ball.position.set(m.ball.x,.28,m.ball.z);g.ball.material.color.setHex(m.power.fire>0?0xffc56e:0xf7fdff);g.ball.material.emissive.setHex(m.power.fire>0?0xff9b46:0xbcefff);g.ballHalo.position.copy(g.ball.position);g.ballHalo.visible=g.ball.visible;g.ballHalo.material.color.setHex(m.power.fire>0?0xffa165:0x8ceaff);g.ballHalo.scale.setScalar(1+Math.sin(t*10)*.12);g.ballRing.position.set(m.ball.x,.055,m.ball.z);g.ballRing.visible=g.ball.visible;
+  const balls=m.balls||[m.ball],primary=balls[0];g.ball.visible=!!primary&&!m.dead&&!m.wavePause;if(primary){g.ball.position.set(primary.x,.28,primary.z);g.ball.material.color.setHex(m.power.fire>0?0xffc56e:0xf7fdff);g.ball.material.emissive.setHex(m.power.fire>0?0xff9b46:0xbcefff);g.ballHalo.position.copy(g.ball.position);g.ballRing.position.set(primary.x,.055,primary.z);}g.ballHalo.visible=g.ball.visible;g.ballHalo.material.color.setHex(m.power.fire>0?0xffa165:0x8ceaff);g.ballHalo.scale.setScalar(1+Math.sin(t*10)*.12);g.ballRing.visible=g.ball.visible;
+  g.extraBalls.forEach((q,i)=>{const ball=balls[i+1];q.visible=!!ball&&!m.dead&&!m.wavePause;if(ball)q.position.set(ball.x,.28,ball.z);q.material.emissiveIntensity=.32+Math.sin(t*8+i)*.08;});
   g.trail.forEach((q,i)=>{q.visible=!r.lowMotion&&!m.serving&&!m.dead&&!m.wavePause&&i<m.trail.length;if(q.visible){const p=m.trail[i];q.position.set(p.x,.265,p.z);q.scale.setScalar(1-i/17);q.material.color.setHex(m.power.fire>0?0xff9e62:0x76e6ff);}});
   g.pickups.forEach((q,i)=>{const p=m.pickups[i];q.group.visible=q.shadow.visible=!!p;if(p){q.group.position.set(p.x,.48+Math.sin(t*5+p.phase)*.09,p.z);q.group.rotation.y=t*2+p.phase;q.body.rotation.z=t+p.phase;q.body.material.color.setHex(powerColors[p.kind]);q.body.material.emissive.setHex(powerColors[p.kind]);q.line.rotation.y=t*1.7;q.shadow.position.set(p.x,.049,p.z);}});
   g.serveDots.forEach((q,i)=>{q.visible=!!m.serving&&!m.dead&&!m.wavePause;if(q.visible)q.position.set(m.ball.x+Math.sin(.22*Math.sin(m.wave*1.7+m.attempt))*i*.26,.09,m.ball.z-.45-i*.26);});
