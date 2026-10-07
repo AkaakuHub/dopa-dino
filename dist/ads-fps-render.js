@@ -1,4 +1,5 @@
 import * as THREE from './vendor/three.module.min.js';
+import { surface, roundedBox } from './ads-visuals.js';
 import { RANGE_RULES } from './ads-fps.js';
 
 const TAU = Math.PI * 2;
@@ -37,7 +38,7 @@ function overlay(object) {
 }
 function makeDrone(r, s, slot) {
   const group = r.group();
-  const shell = r.mat([0x7794ae, 0x807cad, 0x74a99e][slot], { metalness: .65, roughness: .28 });
+  const shell = surface(r,'metal',[0x8d9ea8,0xad9d83,0x87a59b][slot],{metalness:.67,roughness:.37,repeat:[3,2]});
   const dark = r.mat(0x162739, { metalness: .45, roughness: .38 });
   const face = r.mat(0x061b27, { metalness: .6, roughness: .18 });
   const body = r.mesh(s.sphere, shell, group); body.scale.set(.68, .58, .43);
@@ -63,16 +64,16 @@ function buildRange(r, m) {
   r.camera = new THREE.PerspectiveCamera(57, 1, .06, 85);
   r.scene.add(r.camera); r.camera.position.set(m.eyeX, m.eyeY, 5);
   const s = r.range = {
-    box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 16, 12),
+    box: roundedBox(1,1,1,.07,1), sphere: new THREE.SphereGeometry(1, 16, 12),
     hoop: new THREE.TorusGeometry(.76, .028, 6, 36), rotor: new THREE.TorusGeometry(.22, .035, 6, 20),
     shadow: new THREE.CircleGeometry(1, 24), lastEvent: 0, effects: [], effectCursor: 0,
     amber: glow(amber)
   };
   const architecture = r.group();
-  r.box(architecture, 0, -.22, -10, 17, .42, 39, 0x101c31, { roughness: .46, metalness: .4 });
-  r.box(architecture, 0, .025, -8, 8.1, .035, 27, 0x162b40, { roughness: .35, metalness: .5 });
+  r.box(architecture, 0, -.22, -10, 17,.42,39,surface(r,'stone',0x465058,{repeat:[9,24],roughness:.83,bumpScale:.06}));
+  r.box(architecture, 0, .025, -8, 8.1,.035,27,surface(r,'circuit',0x354b58,{repeat:[4,16],roughness:.56,metalness:.4}));
   for (const side of [-1, 1]) {
-    r.box(architecture, side * 7.1, 3.5, -10, .55, 7.2, 34, 0x102238);
+    r.box(architecture, side * 7.1, 3.5, -10, .55,7.2,34,surface(r,'metal',0x304452,{repeat:[4,18],roughness:.64,metalness:.46}));
     r.box(architecture, side * 4.15, .12, -9, .075, .055, 30, cyan, { emissive: cyan, emissiveIntensity: 1 });
     for (let i = 0; i < 7; i++) {
       const z = 3 - i * 4.6;
@@ -100,6 +101,22 @@ function buildRange(r, m) {
   r.box(architecture, 0, .58, 3.25, 7.7, 1.15, .62, 0x253b4d, { metalness: .5 });
   r.box(architecture, 0, 1.17, 3.25, 7.9, .11, .69, 0x526878);
   r.box(architecture, 0, 1.24, 3.4, 7.4, .025, .045, cyan, { emissive: cyan, emissiveIntensity: 1 });
+  const dullSteel=surface(r,'metal',0x6a7980,{roughness:.6,metalness:.6}),safety=surface(r,'ceramic',0xb99b5c,{roughness:.7}),dark=surface(r,'metal',0x273a45,{roughness:.67});
+  for(const side of [-1,1]){
+    const duct=r.cylinder(architecture,side*5.4,5.72,-9,.46,.46,32,dullSteel,12);duct.rotation.x=Math.PI/2;
+    for(let i=0;i<6;i++){
+      const z=1-i*5;
+      const collar=r.cylinder(architecture,side*5.4,5.72,z,.53,.53,.18,dark,12);collar.rotation.x=Math.PI/2;
+      // Exposed triangular steel trusses and cylinder tanks break the box silhouette.
+      r.tube(architecture,[[side*6.85,4.4,z],[side*5.55,6.54,z],[side*3.95,6.65,z]],.11,dullSteel);
+      if(i%2===0){r.cylinder(architecture,side*5.8,1.66,z-1,.48,.48,1.34,dullSteel,16);r.sphere(architecture,side*5.8,2.33,z-1,.48,dullSteel).scale.y=.25;r.ring(architecture,side*5.8,1.35,z-1,.49,.025,safety);}
+      for(let j=0;j<5;j++){const fin=r.box(architecture,side*6.76,2.9+j*.13,z-.7,.1,.048,1.24,dark);fin.rotation.z=side*.12;}
+      for(let j=0;j<5;j++){const stripe=r.box(architecture,side*4.6,.053,z-1+j*.23,.42,.015,.08,safety);stripe.rotation.y=side*.42;}
+    }
+  }
+  const portal=r.mesh(new THREE.TorusGeometry(2.85,.24,6,8),dullSteel,architecture);portal.position.set(0,3.45,-24.56);portal.rotation.z=Math.PI/8;
+  const portalInner=r.mesh(new THREE.TorusGeometry(2.54,.06,6,8),safety,architecture);portalInner.position.copy(portal.position);portalInner.position.z+=.08;portalInner.rotation.z=Math.PI/8;
+  for(const x of [-6.4,6.4]){const reel=r.mesh(new THREE.TorusGeometry(.5,.15,8,20),dark,architecture);reel.position.set(x,1.6,-4);r.cylinder(architecture,x,.66,-4,.26,.33,1.25,dullSteel,12);}
   r.mergeStatic(architecture);
   s.title = label(r.scene, 7.3, 1.2); s.title.sprite.position.set(0, 3.3, -24.48); s.title.set('NEON RANGE');
   s.board = label(r.scene, 5.2, .75); s.board.sprite.position.set(0, 4.5, -9); s.board.set('12 TARGETS');
@@ -122,8 +139,7 @@ function buildRange(r, m) {
   }
   // First-person pulse tool and reticle belong to the perspective camera itself.
   s.weapon = r.group(r.camera);
-  const gunMetal = new THREE.MeshStandardMaterial({ color: 0x6b8296, metalness: .68, roughness: .28 });
-  const gunDark = new THREE.MeshStandardMaterial({ color: 0x12273c, metalness: .45, roughness: .4 });
+  const gunMetal=surface(r,'metal',0x87949c,{metalness:.76,roughness:.34,repeat:[3,3]}),gunDark=surface(r,'fabric',0x243845,{roughness:.87,repeat:[3,4]});
   unit(r, s, s.weapon, 0, 0, 0, .16, .16, .47, gunMetal);
   unit(r, s, s.weapon, 0, -.085, .11, .115, .21, .14, gunDark).rotation.x = -.2;
   unit(r, s, s.weapon, 0, .102, -.055, .085, .035, .28, gunDark);
@@ -134,6 +150,8 @@ function buildRange(r, m) {
   s.muzzle = r.mesh(new THREE.ConeGeometry(.047, .19, 7), glow(0xd9fff2, .85), s.weapon); s.muzzle.rotation.x = -Math.PI / 2; s.muzzle.position.z = -.49;
   s.cells = [];
   for (let i = 0; i < 6; i++) s.cells.push(unit(r, s, s.weapon, -.087, .02, .13 - i * .038, .016, .028, .025, glow(cyan)));
+  for(let i=0;i<4;i++){unit(r,s,s.weapon,.085,.025,-.16+i*.058,.012,.055,.026,gunDark);unit(r,s,s.weapon,-.085,.025,-.16+i*.058,.012,.055,.026,gunDark);}
+  const chamber=r.mesh(new THREE.CylinderGeometry(.046,.046,.15,12),surface(r,'metal',0xc6a772,{metalness:.72,roughness:.35}),s.weapon);chamber.rotation.x=Math.PI/2;chamber.position.set(0,.024,-.19);
   overlay(s.weapon);
   s.reticle = r.group(r.camera); s.reticle.position.z = -1;
   s.reticleMaterial = glow(0xecfff9);

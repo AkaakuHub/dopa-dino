@@ -1,4 +1,5 @@
 import * as THREE from './vendor/three.module.min.js';
+import { surface, roundedBox } from './ads-visuals.js';
 import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
 
 const TAU = Math.PI * 2;
@@ -92,7 +93,7 @@ function updateTroops(pool, count, time, centerX, centerZ, width = 2.5, enemy = 
 }
 function gateFrame(r, state, x, tint) {
   const g = r.group(nullParent(state), x, 0, 0);
-  const material = r.mat(tint, { metalness: .28, roughness: .24, emissive: tint, emissiveIntensity: .13 });
+  const material = surface(r,'metal',tint,{metalness:.48,roughness:.37});
   for (const side of [-1, 1]) {
     unit(r, state.box, material, g, side * 1.51, 1.28, 0, .18, 2.55, .26);
     unit(r, state.box, 0xeaf9ff, g, side * 1.51, 2.43, .02, .205, .12, .29);
@@ -110,14 +111,19 @@ function gateFrame(r, state, x, tint) {
 // Explicit parent is assigned by the caller after allocation, keeping helpers local.
 function nullParent(state) { return state.parent; }
 
+function palmLeafGeometry(){
+  const vertices=[],uv=[];
+  for(let i=0;i<5;i++){const a=i/5,b=(i+1)/5,point=(t,side)=>[t*1.3,Math.sin(t*Math.PI)*.18-t*t*.29,side*Math.sin(t*Math.PI)*.19];const pa=point(a,-1),pb=point(a,1),pc=point(b,1),pd=point(b,-1);vertices.push(...pa,...pb,...pc,...pa,...pc,...pd);uv.push(a,0,a,1,b,1,a,0,b,1,b,0);}
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.computeVertexNormals();return geo;
+}
 function buildGates(r, m) {
-  const s = r.gates = { box: new THREE.BoxGeometry(1, 1, 1), sphere: new THREE.SphereGeometry(1, 12, 8), rows: [], lastEvent: 0, lastAttempt: m.attempt, effects: [], fxCursor: 0, impact: 0, lastTime: m.time };
+  const s = r.gates = { box: roundedBox(1,1,1,.055,1), sphere: new THREE.SphereGeometry(1, 12, 8), rows: [], lastEvent: 0, lastAttempt: m.attempt, effects: [], fxCursor: 0, impact: 0, lastTime: m.time };
   r.scene.background = new THREE.Color(0x92dcde);
   r.scene.fog = new THREE.Fog(0x92dcde, 34, 75);
   const ground = r.group();
-  r.box(ground, 0, -1.72, -10, 150, .4, 170, 0x1bacc0, { roughness: .32, metalness: .12 });
+  r.box(ground, 0, -1.72, -10, 150, .4, 170, surface(r,'water',0x369da8,{repeat:[55,65],roughness:.21,metalness:.12,bumpScale:.05}));
   r.box(ground, 0, -.35, -14, 8.25, .64, 70, 0x647f8f);
-  r.box(ground, 0, -.035, -14, 7.55, .13, 70, 0xd7ddd5, { roughness: .8 });
+  r.box(ground, 0, -.035, -14, 7.55, .13, 70, surface(r,'stone',0xd7ddd5,{repeat:[5,45],roughness:.91,bumpScale:.03}));
   for (const x of [-3.91, 3.91]) {
     r.box(ground, x, .12, -14, .4, .38, 70, 0xebefda);
     r.box(ground, x, .34, -14, .44, .09, 70, 0xffffff);
@@ -131,16 +137,26 @@ function buildGates(r, m) {
   }
   for (let i = 0; i < 12; i++) {
     const x = (i % 2 ? 1 : -1) * (9 + i % 4 * 4), z = 8 - i * 5.2;
-    r.cylinder(ground, x, -1.5, z, 2.2, 2.75, .42, 0xe9d6a5, 9);
-    r.cylinder(ground, x, -1.18, z, 1.65, 2.1, .58, 0x63bb80, 9);
+    r.cylinder(ground, x, -1.5, z, 2.2, 2.75, .42, surface(r,'sand',0xe9d6a5,{repeat:[4,4]}), 16);
+    r.cylinder(ground, x, -1.18, z, 1.65, 2.1, .58, surface(r,'turf',0x6f9969,{repeat:[4,4]}), 16);
     for (let j = 0; j < 3; j++) {
       const tx = x + Math.sin(j * 2.5) * .7, tz = z + Math.cos(j * 2.5) * .7;
       r.cylinder(ground, tx, -.28, tz, .09, .16, 1.55, 0xb88755, 7);
       for (let k = 0; k < 5; k++) {
         const a = k * TAU / 5;
-        const leaf = r.box(ground, tx + Math.cos(a) * .37, .55, tz + Math.sin(a) * .37, .95, .09, .3, k % 2 ? 0x268b68 : 0x35a972);
-        leaf.rotation.y = -a; leaf.rotation.z = Math.cos(a) * -.23;
+        const leaf = r.mesh(palmLeafGeometry(),surface(r,'fabric',k%2?0x3a8058:0x65a269,{side:THREE.DoubleSide,roughness:.85,repeat:[1,3]}),ground);leaf.position.set(tx,.58,tz);leaf.rotation.y=-a;leaf.rotation.z=.08;
       }
+    }
+  }
+  const timber=surface(r,'wood',0x916944,{repeat:[1,5]}),rope=surface(r,'fabric',0xb1a578,{repeat:[1,5]}),brass=surface(r,'metal',0xb69e69,{roughness:.52});
+  for(const side of [-1,1]){
+    for(let i=0;i<6;i++){
+      const z=8-i*11;
+      r.cylinder(ground,side*4.13,.83,z,.105,.135,2.05,timber,10);
+      r.sphere(ground,side*4.13,1.94,z,.16,brass);
+      if(i<5){r.tube(ground,[[side*4.13,1.72,z],[side*4.13,1.18,z-5.5],[side*4.13,1.72,z-11]],.045,rope);}
+      // Rounded cutwaters, not featureless square bridge supports.
+      r.cylinder(ground,side*3.5,-1.18,z,.42,.56,1.9,surface(r,'stone',0x677d77),10);
     }
   }
   r.mergeStatic(ground);
@@ -330,8 +346,8 @@ function buildStack(r, m) {
   r.scene.background = new THREE.Color(0xf0d9ce);
   r.scene.fog = new THREE.Fog(0xf0d9ce, 24, 68);
   for (let i = 0; i < 32; i++) {
-    const c = new THREE.Color().setHSL((.49 + i / 45) % 1, .62, .58);
-    s.palette.push({ body: r.mat(c, { roughness: .34, metalness: .12 }), top: r.mat(c.clone().lerp(new THREE.Color(0xffffff), .28), { roughness: .4, metalness: .05 }), base: r.mat(c.clone().multiplyScalar(.62), { roughness: .4 }) });
+    const minerals=[0x729991,0x93b7a7,0xbcc5ab,0xd4bb94,0xc48d71,0xaf8592,0x9199af,0x729bad],c=new THREE.Color(minerals[Math.floor(i/4)%minerals.length]);c.lerp(new THREE.Color(0xf4ebd6),(i%4)*.06);
+    s.palette.push({body:surface(r,'marble',c,{roughness:.32,repeat:[2,1]}),top:surface(r,'marble',c.clone().lerp(new THREE.Color(0xffffff),.23),{roughness:.25,repeat:[2,2]}),base:surface(r,'metal',0xb3996b,{metalness:.72,roughness:.4})});
   }
   const sky = r.group();
   // A quiet, layered skyline provides scale without competing with the moving tile.
@@ -341,7 +357,7 @@ function buildStack(r, m) {
     const tint = [0xbed9d5, 0xc6d5d5, 0xd2cdc9, 0xd7d7ca, 0xb6d1d5][i % 5];
     r.box(sky, x, -13 + h / 2, z, 1.6 + i % 3 * .65, h, 1.6 + i % 4 * .36, tint);
     r.box(sky, x, -13 + h + .13, z, 1.8 + i % 3 * .65, .25, 1.8 + i % 4 * .36, 0xe6e4d9);
-    if (i % 3 === 0) r.box(sky, x, -13 + h + .7, z, .1, 1.2, .1, 0xb3c1c0);
+    if(i%3===0){r.cylinder(sky,x,-13+h+.52,z,.22,.5,.85,surface(r,'metal',0x9faead),8);r.box(sky,x,-13+h+1.2,z,.08,.7,.08,0xb3c1c0);}else if(i%3===1){r.box(sky,x,-13+h+.47,z,1.1,.65,1.05,0xc3ccc4);r.box(sky,x,-13+h+.88,z,.65,.2,.65,0xe5d8b6);}
     for (let j = 0; j < 4; j++) r.box(sky, x - .48 + j * .32, -13 + h * .62, z + (1.6 + i % 4 * .36) / 2 + .015, .1, h * .45, .025, 0xe7e2d2);
   }
   r.mergeStatic(sky);
@@ -357,7 +373,10 @@ function buildStack(r, m) {
   unit(r, s.bevel, r.mat(0x367d8f, { roughness: .35, metalness: .2 }), s.pedestal, 0, -.72, 0, 4.25, .94, 4.25);
   unit(r, s.bevel, 0x75b9c5, s.pedestal, 0, -1.33, 0, 4.55, .34, 4.55);
   unit(r, s.bevel, 0xb4dada, s.pedestal, 0, -1.62, 0, 5, .26, 5);
-  unit(r, s.box, 0x7eafb5, s.pedestal, 0, -5.65, 0, 2.9, 7.85, 2.9);
+  unit(r,s.box,surface(r,'stone',0x6c9697,{repeat:[2,6]}),s.pedestal,0,-5.65,0,2.9,7.85,2.9);
+  const gold=surface(r,'metal',0xc5a879,{roughness:.4,metalness:.72}),pedestalStone=surface(r,'marble',0xc8d4c6,{roughness:.4});
+  for(const x of [-1.33,1.33])for(const z of [-1.33,1.33]){r.cylinder(s.pedestal,x,-5.35,z,.15,.22,7.9,pedestalStone,12);for(const y of [-8.9,-3.8,-1.74])r.cylinder(s.pedestal,x,y,z,.27,.27,.1,gold,12);}
+  for(const side of [-1,1]){r.box(s.pedestal,side*1.463,-5.35,0,.03,6.7,.045,gold);r.box(s.pedestal,0,-5.35,side*1.463,.045,6.7,.03,gold);}
   const slab = parent => {
     const group = r.group(parent);
     const body = unit(r, s.bevel, s.palette[0].body, group, 0, 0, 0);
