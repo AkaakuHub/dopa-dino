@@ -10,8 +10,8 @@ export const AD_GAMES = [
 ];
 // One randomly ordered visit to each game per round, with no repeat at a round boundary.
 export class AdShuffleBag {
-  constructor(random=Math.random){this.random=random;this.bag=[];this.last=null;}
-  next(){if(!this.bag.length){this.bag=AD_GAMES.map(g=>g.id);for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}if(this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}}this.last=this.bag.shift();return this.last;}
+  constructor(random=Math.random,allowed=()=>AD_GAMES.map(g=>g.id)){this.allowed=allowed;this.random=random;this.bag=[];this.last=null;}
+  next(){const allowed=this.allowed().filter(id=>AD_GAMES.some(g=>g.id===id));if(!allowed.length)allowed.push('snow');this.bag=this.bag.filter(id=>allowed.includes(id));if(!this.bag.length){this.bag=[...allowed];for(let i=this.bag.length-1;i>0;i--){const j=Math.floor(this.random()*(i+1));[this.bag[i],this.bag[j]]=[this.bag[j],this.bag[i]];}if(this.bag.length>1&&this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}}this.last=this.bag.shift();return this.last;}
 }
 export const ROUND_RULES={
   range:{limit:45,goal:12,label:'ドローン12機を撃破',value:m=>m.hits,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'},
