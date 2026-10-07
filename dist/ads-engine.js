@@ -9,15 +9,16 @@ export const AD_GAMES = [
   ...GATES_STACK_META,...GOLF_BREAKER_META,...FPS_META,...PIN_MERGE_META
 ];
 export const AD_ROTATION_KEY='dino-overdrive-ad-rotation';
+export const AD_MISSION_ROTATION_KEY='dino-overdrive-mission-rotation';
 const AD_POOL=AD_GAMES.map(g=>g.id),AD_POOL_ID=AD_POOL.join(',');
 // Rewarded ads always visit all games, independently of the LAB's unlocks.
 // Save only the remaining bag and last draw, so reloads do not restart a cycle.
 export class AdShuffleBag {
-  constructor(random=Math.random,storage){
-    this.random=random;this.bag=[];this.last=null;this.readOnly=false;
+  constructor(random=Math.random,storage,key=AD_ROTATION_KEY){
+    this.random=random;this.bag=[];this.last=null;this.readOnly=false;this.key=key;
     try{
       this.storage=storage===undefined?globalThis.localStorage:storage;
-      const saved=JSON.parse(this.storage?.getItem(AD_ROTATION_KEY)||'null');
+      const saved=JSON.parse(this.storage?.getItem(this.key)||'null');
       this.readOnly=saved?.version>1;
       if(saved?.version===1&&saved.pool===AD_POOL_ID&&Array.isArray(saved.bag)&&saved.bag.length<AD_POOL.length&&new Set(saved.bag).size===saved.bag.length&&saved.bag.every(id=>AD_POOL.includes(id))&&AD_POOL.includes(saved.last)&&!saved.bag.includes(saved.last)){
         this.bag=[...saved.bag];this.last=saved.last;
@@ -31,7 +32,7 @@ export class AdShuffleBag {
       if(this.bag.length>1&&this.bag[0]===this.last){const j=1+Math.floor(this.random()*(this.bag.length-1));[this.bag[0],this.bag[j]]=[this.bag[j],this.bag[0]];}
     }
     this.last=this.bag.shift();
-    if(!this.readOnly)try{this.storage?.setItem(AD_ROTATION_KEY,JSON.stringify({version:1,pool:AD_POOL_ID,bag:this.bag,last:this.last}));}catch{}
+    if(!this.readOnly)try{this.storage?.setItem(this.key,JSON.stringify({version:1,pool:AD_POOL_ID,bag:this.bag,last:this.last}));}catch{}
     return this.last;
   }
 }
@@ -48,7 +49,7 @@ export const ROUND_RULES={
   breaker:{limit:150,goal:28,label:'ブロックを全て壊す',value:m=>m.destroyed,win:m=>m.wavePause>0||m.wave>1,fail:m=>m.dead>0}
 };
 export class AdSession {
-  constructor(kind,{round=1,receipt=''}={}){this.kind=kind;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);this.rule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};}
+  constructor(kind,{round=1,receipt='',missionId=kind}={}){this.kind=kind;this.missionId=missionId;this.elapsed=0;this.roundTime=0;this.closed=false;this.round=round;this.receipt=receipt;this.result=null;this.settled=false;const Model={snow:SnowCamp,hole:HoleCity,helix:HelixTower,...GATES_STACK_MODELS,...GOLF_BREAKER_MODELS,...FPS_MODELS,...PIN_MERGE_MODELS}[kind];if(!Model)throw new Error('Unknown game: '+kind);this.model=new Model(round);this.rule=ROUND_RULES[kind]||{limit:120,goal:1,label:'CLEAR',value:m=>m.progress||0,win:m=>m.outcome==='success',fail:m=>m.outcome==='failure'};}
   get ready(){return this.elapsed>=5&&!this.closed;}
   get remaining(){return Math.max(0,Math.ceil(5-this.elapsed));}
   get progress(){return Math.min(1,Math.max(0,this.rule.value(this.model)/this.rule.goal));}

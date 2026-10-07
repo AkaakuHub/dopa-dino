@@ -84,7 +84,7 @@ The UI integration test uses DOM/canvas stubs; it verifies event bindings and HU
 - After a collision, choose 広告で復活. Unlimited revivals retain score, coins, combo, distance, stage and boost charge. Obstacles are cleared and a three-second collision shield protects each return.
 - An opaque full-screen creative slides up once per opening over 400 ms. Reduced-motion preferences suppress the entrance animation. The background runner, page scrolling and background controls stay paused.
 - Compact rewarded-ad chrome contains the game title, a small ad label, three live stats, controls and a countdown. Skip unlocks after five active, visible seconds. There is no automatic exit or install prompt. Each objective round has a visible active-play time limit and a success/failure result; same-game replay permits indefinite play; each opening contains exactly one game. Blur, hidden tabs and input cancellation are handled separately from game progress.
-- Rewarded ads use all ten games independently of LAB/tree unlocks. A saved shuffled bag visits every game once before refilling, survives page reloads and prevents adjacent repeats across boundaries. Direct LAB launches and same-game replay never consume an ad draw.
+- Rewarded ads use all ten creative games independently of LAB/tree unlocks. Mission rewards use a separate saved ten-item bag, so a LAB mission or a revive reward is never tied to the creative shown. Each creative and mission bag visits every item once before refilling, survives page reloads and prevents adjacent repeats across boundaries. A LAB mission selection consumes a mission context but draws its creative independently; same-game replay keeps both context values fixed.
 
 ### Ten original real-time 3D games
 
